@@ -1,3 +1,6 @@
+
+const serverUrl = 'ws://localhost:4001';
+
 function waitForNetworkIdle(timeout = 1000, checkInterval = 500) {
   return new Promise((resolve) => {
     let lastActiveTimestamp = Date.now();
@@ -33,24 +36,49 @@ function waitForNetworkIdle(timeout = 1000, checkInterval = 500) {
 
     // Start the check process
     check();
+
   });
 }
 
-function delay(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
 
 
 const runCode = () => {
 	console.log('running code');
 	//Now this is where it gets really fucking tricky
-	const lang = document.querySelector('#codemirror .cm-content').getAttribute('data-language');
+	const language = document.querySelector('#codemirror .cm-content').getAttribute('data-language');
 	const code = [...document.querySelectorAll('#codemirror .cm-line')].map(x => x.innerText).join('\n');
 
 	console.log('Running ' + code + ' in ' + lang);
 	
 	// we need to send this to backend
-	const request = {lang, code};
+	const request = {language, code};
+
+    const socket = new WebSocket(serverUrl);
+
+    // send code to server
+    socket.addEventListener('open', (event) => {
+        console.log('WebSocket connection opened:', event);
+        socket.send(JSON.stringify(request));
+    });
+
+    socket.addEventListener('message', (event) => {
+        console.log('Received message from server:', event.data);
+    });
+
+
+    // WebSocket error handling
+    socket.addEventListener('error', (event) => {
+        console.log('WebSocket error:', event);
+    });
+
+    // WebSocket connection closed event
+    socket.addEventListener('close', (event) => {
+        console.log('WebSocket connection closed:', event);
+        // UI
+    });
+
+
+    //
 }
 
 

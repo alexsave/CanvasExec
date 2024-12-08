@@ -91,6 +91,8 @@ const runCode = () => {
         document.querySelector('section').appendChild(terminalElement);
     }
 
+    terminalElement.innerHTML = "";
+
     // send code to server
     socket.addEventListener('open', (event) => {
         console.log('WebSocket connection opened:', event);
@@ -100,12 +102,8 @@ const runCode = () => {
     socket.addEventListener('message', (event) => {
         console.log('Received message from server:', event.data);
         const status = event.data[0];
-        //if (event.data.slice(0,7)==='Error: ') {
         appendOutput(terminalElement, event.data.slice(1), status === 'e'?'#f22c3d':'#fff')
-        //} else {
-            //appendOutput(terminalElement, event.data)
-        //}
-        // UI
+        terminalElement.scrollTop = terminalElement.scrollHeight;
     });
 
 

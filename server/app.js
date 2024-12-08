@@ -107,11 +107,11 @@ const runCommand = (socket, cmd, args) => {
         const process = spawn(cmd, args);
 
         process.stdout.on('data', (data) => {
-            socket.send(data.toString());
+            socket.send('o' + data.toString());
         });
 
         process.stderr.on('data', (data) => {
-            socket.send(`Error: ${data.toString()}`);
+            socket.send('e' + data.toString());
         });
 
         process.on('close', (code) => {

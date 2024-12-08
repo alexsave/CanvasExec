@@ -40,6 +40,22 @@ function waitForNetworkIdle(timeout = 1000, checkInterval = 500) {
     });
 }
 
+const appendOutput = (terminal, text, color='#fff') => {
+    const chunk = document.createElement('code');
+    chunk.style.color = color;
+    //chunk.textContent = text.replace(/\n/g, '<br>');
+    chunk.textContent = text;//.replace(/\n/g, '<br>');
+    chunk.style.whiteSpace = 'pre';
+    terminal.appendChild(chunk);
+}
+
+/*const appendError = (terminal, text) => {
+    const line = document.createElement('code');
+    line.style.color = '#f22c3d'
+    line.textContent = text;
+    terminal.appendChild(line);
+}*/
+
 
 
 const runCode = () => {
@@ -55,8 +71,25 @@ const runCode = () => {
 
     const socket = new WebSocket(serverUrl);
 
-    const terminalElement = document.createElement("footer");
-    terminalElement.id = 'my-terminal';
+    let terminalElement = document.querySelector('#my-terminal');
+
+    if (!document.querySelector('#my-terminal')) {
+        terminalElement = document.createElement("footer");
+        terminalElement.id = 'my-terminal';
+
+        // add terminal
+        terminalElement.style.position = 'fixed';
+        terminalElement.style.bottom = '0';
+        terminalElement.style.width = '100%';
+        terminalElement.style.height = '200px';
+        terminalElement.style.backgroundColor = '#0d0d0d';
+        terminalElement.style.fontSize = '14px';
+        terminalElement.style.overflowY = 'auto';
+        terminalElement.style.padding = '1rem';
+
+        // Append the new child to the parent
+        document.querySelector('section').appendChild(terminalElement);
+    }
 
     // send code to server
     socket.addEventListener('open', (event) => {
@@ -66,6 +99,12 @@ const runCode = () => {
 
     socket.addEventListener('message', (event) => {
         console.log('Received message from server:', event.data);
+        const status = event.data[0];
+        //if (event.data.slice(0,7)==='Error: ') {
+        appendOutput(terminalElement, event.data.slice(1), status === 'e'?'#f22c3d':'#fff')
+        //} else {
+            //appendOutput(terminalElement, event.data)
+        //}
         // UI
     });
 
@@ -73,6 +112,7 @@ const runCode = () => {
     // WebSocket error handling
     socket.addEventListener('error', (event) => {
         console.log('WebSocket error:', event);
+        appendOutput(terminalElement, event, '#f22c3d')
     });
 
     // WebSocket connection closed event
@@ -82,36 +122,6 @@ const runCode = () => {
     });
 
 
-    if (!document.querySelector('#my-terminal')) {
-
-        // add terminal
-        //terminalElement.style.all = 'unset';
-        terminalElement.style.position = 'fixed';
-        terminalElement.style.bottom = '0';
-        terminalElement.style.left = '0';
-        terminalElement.style.width = '100%';
-        terminalElement.style.height = '200px';
-        terminalElement.style.backgroundColor = '#0d0d0d';
-        terminalElement.style.color = 'limegreen';
-        //terminalElement.style.fontFamily = "'Courier New', Courier, monospace";
-        //terminalElement.style.fontFamily = 'unset';
-        terminalElement.style.fontFamily = "ui-monospace,SFMono-Regular,'SF Mono',Menlo,Consolas,'Liberation Mono',monospace !important",
-        terminalElement.style.fontWeight = '400';
-        terminalElement.style.fontSize = '14px';
-        terminalElement.style.overflowY = 'auto';
-        terminalElement.style.borderTop = '2px solid #333';
-        terminalElement.style.padding = '1rem';
-        terminalElement.style.boxSizing = 'border-box';
-
-        const line = document.createElement('code');
-        line.textContent = `Line 1: This is a sample log message`;
-        terminalElement.appendChild(line);
-
-        //terminalElement.textContent = "This is the new child\nnewline";
-
-        // Append the new child to the parent
-        document.querySelector('section').appendChild(terminalElement);
-    }
 }
 
 

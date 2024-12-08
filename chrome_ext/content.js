@@ -40,6 +40,140 @@ function waitForNetworkIdle(timeout = 1000, checkInterval = 500) {
     });
 }
 
+function waitForNetworkIdle2(timeout = 1000, checkInterval = 500) {
+    return new Promise((resolve) => {
+        let lastActiveTimestamp = Date.now();
+        let activeRequests = 0;
+
+        const check = () => {
+            const now = Date.now();
+
+            // If there are no active requests and the timeout has elapsed
+            if (activeRequests === 0 && now - lastActiveTimestamp >= timeout) {
+                resolve();
+            } else {
+                // Reset the timer and check again after the check interval
+                setTimeout(check, checkInterval);
+            }
+        };
+
+        const updateLastActiveTimestamp = () => {
+            lastActiveTimestamp = Date.now();
+        };
+
+        const incrementActiveRequests = () => {
+            activeRequests++;
+            updateLastActiveTimestamp();
+        };
+
+        const decrementActiveRequests = () => {
+            activeRequests = Math.max(0, activeRequests - 1);
+            updateLastActiveTimestamp();
+        };
+
+        // Wrap fetch to track activity
+        const originalFetch = window.fetch;
+        window.fetch = (...args) => {
+            incrementActiveRequests();
+            return originalFetch.apply(this, args).then((response) => {
+                decrementActiveRequests();
+                return response;
+            }).catch((error) => {
+                decrementActiveRequests();
+                throw error;
+            });
+        };
+
+        // Wrap XMLHttpRequest to track activity
+        const originalXHROpen = XMLHttpRequest.prototype.open;
+        XMLHttpRequest.prototype.open = function (...args) {
+            this.addEventListener('loadend', decrementActiveRequests, true);
+            incrementActiveRequests();
+            originalXHROpen.apply(this, args);
+        };
+
+        // Start the check process
+        check();
+    });
+}
+
+function waitForNetworkIdleAndDOMStable(timeout = 1000, checkInterval = 500) {
+    return new Promise((resolve) => {
+        let lastActiveTimestamp = Date.now();
+        let activeRequests = 0;
+        let domChangeDetected = false;
+
+        const check = () => {
+            const now = Date.now();
+
+            // If no active requests, no DOM changes, and timeout has elapsed
+            if (activeRequests === 0 && !domChangeDetected && now - lastActiveTimestamp >= timeout) {
+                domObserver.disconnect(); // Stop observing DOM changes
+                resolve();
+            } else {
+                setTimeout(check, checkInterval);
+            }
+        };
+
+        const updateLastActiveTimestamp = () => {
+            lastActiveTimestamp = Date.now();
+        };
+
+        const incrementActiveRequests = () => {
+            activeRequests++;
+            updateLastActiveTimestamp();
+        };
+
+        const decrementActiveRequests = () => {
+            activeRequests = Math.max(0, activeRequests - 1);
+            updateLastActiveTimestamp();
+        };
+
+        // Wrap fetch to track activity
+        const originalFetch = window.fetch;
+        window.fetch = (...args) => {
+            incrementActiveRequests();
+            return originalFetch.apply(this, args).then((response) => {
+                decrementActiveRequests();
+                return response;
+            }).catch((error) => {
+                decrementActiveRequests();
+                throw error;
+            });
+        };
+
+        // Wrap XMLHttpRequest to track activity
+        const originalXHROpen = XMLHttpRequest.prototype.open;
+        XMLHttpRequest.prototype.open = function (...args) {
+            this.addEventListener('loadend', decrementActiveRequests, true);
+            incrementActiveRequests();
+            originalXHROpen.apply(this, args);
+        };
+
+        // Monitor DOM changes
+        const domObserver = new MutationObserver(() => {
+            domChangeDetected = true;
+            updateLastActiveTimestamp();
+
+            // Reset DOM change detection after the timeout
+            setTimeout(() => {
+                domChangeDetected = false;
+            }, checkInterval);
+        });
+
+        domObserver.observe(document.body, {
+            attributes: true,
+            childList: true,
+            subtree: true,
+        });
+
+        // Start the check process
+        check();
+    });
+}
+
+
+
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 const appendOutput = (terminal, text, color='#fff') => {
@@ -70,6 +204,9 @@ const runFixCode = async () => {
     if (errCache === '')
         return;
 
+    // This is surprisingly critical
+    errCache = 'Fix this:\n' + errCache;
+
     // note that this completely doesn't work in the case where the canvas has no chat on teh left
     const promptBox = document.querySelector('#prompt-textarea');
 
@@ -89,17 +226,22 @@ const runFixCode = async () => {
 
     // Click the button
     // This also probably won't work when canvas is full full screen
-    const button = document.querySelector('button[aria-label="Send prompt"]');
+    /*const button = document.querySelector('button[aria-label="Send prompt"]');
     if (!button){
         console.error('Selector not found: button[aria-label="Send prompt"]');
         return;
-    }
-    button.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    }*/
+    // we have to do this first to really keep track of the loads
+    waitForNetworkIdleAndDOMStable().then(() => {console.log('done, ready for next phase'), runFixCode()});
+    await delay(100);
+    // this works better, just simulate enter rather than button
+    promptBox.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true, cancelable: true }));
+
+    // ok this works kinda strangely, I don't know why 
+    //button.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 
     await delay(1000);
-    await waitForNetworkIdle();
 
-    console.log('done, ready for next phase')
     //runFixCode();
 };
 

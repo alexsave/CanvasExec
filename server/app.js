@@ -75,6 +75,68 @@ server.on('connection', (socket) => {
     });
 });
 
+const getInstallCommand = (packageName) => {
+    const commandTemplate = installCommands[platform];
+    if (!commandTemplate) {
+        throw new Error(`Automatic installation not supported for platform: ${platform}`);
+    }
+    return commandTemplate.replace('{{package}}', packageName);
+};
+
+const ensureToolInstalled = async (language, socket) => {
+    try {
+        const handler = getLanguageHandler(language);
+        await execAsync(handler.checkCommand);
+    } catch {
+        socket.send(`Warning: ${language} not found, attempting to install...`);
+        const handler = getLanguageHandler(language);
+        if (!handler.installCommand) {
+            throw new Error(`Automatic installation not supported for ${language}`);
+        }
+        try {
+            await execAsync(handler.installCommand);
+            socket.send(`${language} successfully installed.`);
+        } catch {
+            throw new Error(`Failed to install ${language}`);
+        }
+    }
+};
+
+const runCommand = (socket, cmd, args) => {
+    return new Promise((resolve, reject) => {
+        const process = spawn(cmd, args);
+
+        process.stdout.on('data', (data) => {
+            socket.send(data.toString());
+        });
+
+        process.stderr.on('data', (data) => {
+            socket.send(`Error: ${data.toString()}`);
+        });
+
+        process.on('close', (code) => {
+            socket.close();
+            if (code === 0) {
+                resolve();
+            } else {
+                reject(new Error(`Command failed with exit code ${code}`));
+            }
+        });
+    });
+};
+
+const getFileName = (dir, language) => {
+    switch (language) {
+        case 'bash': return path.join(dir, 'script.sh');
+        case 'python': return path.join(dir, 'script.py');
+        case 'javascript': return path.join(dir, 'script.js');
+        case 'java': return path.join(dir, 'Main.java');
+        case 'c': return path.join(dir, 'program.c');
+        case 'cpp': return path.join(dir, 'program.cpp');
+        default: return null;
+    }
+};
+
 // Language Handlers
 const languageHandlers = {
     bash: {
@@ -145,67 +207,6 @@ const languageHandlers = {
 };
 
 // Utility Functions
-const getInstallCommand = (packageName) => {
-    const commandTemplate = installCommands[platform];
-    if (!commandTemplate) {
-        throw new Error(`Automatic installation not supported for platform: ${platform}`);
-    }
-    return commandTemplate.replace('{{package}}', packageName);
-};
-
-const ensureToolInstalled = async (language, socket) => {
-    try {
-        const handler = getLanguageHandler(language);
-        await execAsync(handler.checkCommand);
-    } catch {
-        socket.send(`Warning: ${language} not found, attempting to install...`);
-        const handler = getLanguageHandler(language);
-        if (!handler.installCommand) {
-            throw new Error(`Automatic installation not supported for ${language}`);
-        }
-        try {
-            await execAsync(handler.installCommand);
-            socket.send(`${language} successfully installed.`);
-        } catch {
-            throw new Error(`Failed to install ${language}`);
-        }
-    }
-};
-
-const runCommand = (socket, cmd, args) => {
-    return new Promise((resolve, reject) => {
-        const process = spawn(cmd, args);
-
-        process.stdout.on('data', (data) => {
-            socket.send(data.toString());
-        });
-
-        process.stderr.on('data', (data) => {
-            socket.send(`Error: ${data.toString()}`);
-        });
-
-        process.on('close', (code) => {
-            socket.close(code);
-            if (code === 0) {
-                resolve();
-            } else {
-                reject(new Error(`Command failed with exit code ${code}`));
-            }
-        });
-    });
-};
-
-const getFileName = (dir, language) => {
-    switch (language) {
-        case 'bash': return path.join(dir, 'script.sh');
-        case 'python': return path.join(dir, 'script.py');
-        case 'javascript': return path.join(dir, 'script.js');
-        case 'java': return path.join(dir, 'Main.java');
-        case 'c': return path.join(dir, 'program.c');
-        case 'cpp': return path.join(dir, 'program.cpp');
-        default: return null;
-    }
-};
 
 const getLanguageHandler = (language) => languageHandlers[language];
 

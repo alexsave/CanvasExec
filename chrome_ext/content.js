@@ -48,7 +48,7 @@ const runCode = () => {
 	const language = document.querySelector('#codemirror .cm-content').getAttribute('data-language');
 	const code = [...document.querySelectorAll('#codemirror .cm-line')].map(x => x.innerText).join('\n');
 
-	console.log('Running ' + code + ' in ' + lang);
+	//console.log('Running ' + code + ' in ' + lang);
 	
 	// we need to send this to backend
 	const request = {language, code};
@@ -63,6 +63,7 @@ const runCode = () => {
 
     socket.addEventListener('message', (event) => {
         console.log('Received message from server:', event.data);
+        // UI
     });
 
 

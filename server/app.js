@@ -10,6 +10,8 @@ const execAsync = util.promisify(exec);
 // Get the current OS platform
 const platform = os.platform();
 
+const obfuscateFolder = true;
+
 // Define installation command templates for different platforms
 const installCommands = {
     darwin: 'brew install {{package}}',
@@ -102,16 +104,16 @@ const ensureToolInstalled = async (language, socket) => {
     }
 };
 
-const runCommand = (socket, cmd, args) => {
+const runCommand = (socket, cmd, args, tempDir) => {
     return new Promise((resolve, reject) => {
         const process = spawn(cmd, args);
 
         process.stdout.on('data', (data) => {
-            socket.send('o' + data.toString());
+            socket.send('o' + data.toString().replace(tempDir, ''));
         });
 
         process.stderr.on('data', (data) => {
-            socket.send('e' + data.toString());
+            socket.send('e' + data.toString().replace(tempDir, ''));
         });
 
         process.on('close', (code) => {
@@ -142,25 +144,25 @@ const languageHandlers = {
     bash: {
         checkCommand: 'bash --version',
         installCommand: getInstallCommand('bash'),
-        execute: async (socket, fileName) => {
+        execute: async (socket, fileName, tempDir) => {
             await ensureToolInstalled('bash', socket);
-            await runCommand(socket, 'bash', [fileName]);
+            await runCommand(socket, 'bash', [fileName], tempDir);
         }
     },
     python: {
         checkCommand: platform === 'win32' ? 'python --version' : 'python3 --version',
         installCommand: getInstallCommand('python3'),
-        execute: async (socket, fileName) => {
+        execute: async (socket, fileName, tempDir) => {
             await ensureToolInstalled('python', socket);
-            await runCommand(socket, platform === 'win32' ? 'python' : 'python3', [fileName]);
+            await runCommand(socket, platform === 'win32' ? 'python' : 'python3', [fileName], tempDir);
         }
     },
     javascript: {
         checkCommand: 'node --version',
         installCommand: getInstallCommand('node'),
-        execute: async (socket, fileName) => {
+        execute: async (socket, fileName, tempDir) => {
             await ensureToolInstalled('javascript', socket);
-            await runCommand(socket, 'node', [fileName]);
+            await runCommand(socket, 'node', [fileName], tempDir);
         }
     },
     java: {
@@ -170,10 +172,10 @@ const languageHandlers = {
             await ensureToolInstalled('java', socket);
 
             // Compile step
-            await runCommand(socket, 'javac', [fileName]);
+            await runCommand(socket, 'javac', [fileName], tempDir);
 
             // Run compiled Java program
-            await runCommand(socket, 'java', ['-cp', tempDir, 'Main']);
+            await runCommand(socket, 'java', ['-cp', tempDir, 'Main'], tempDir);
         }
     },
     c: {
@@ -184,10 +186,10 @@ const languageHandlers = {
 
             // Compile step
             const compiledFile = path.join(tempDir, 'program');
-            await runCommand(socket, 'gcc', [fileName, '-o', compiledFile]);
+            await runCommand(socket, 'gcc', [fileName, '-o', compiledFile], tempDir);
 
             // Run compiled program
-            await runCommand(socket, compiledFile, []);
+            await runCommand(socket, compiledFile, [], tempDir);
         }
     },
     cpp: {
@@ -198,10 +200,10 @@ const languageHandlers = {
 
             // Compile step
             const compiledFile = path.join(tempDir, 'program');
-            await runCommand(socket, 'g++', [fileName, '-o', compiledFile]);
+            await runCommand(socket, 'g++', [fileName, '-o', compiledFile], tempDir);
 
             // Run compiled program
-            await runCommand(socket, compiledFile, []);
+            await runCommand(socket, compiledFile, [], tempDir);
         }
     }
 };

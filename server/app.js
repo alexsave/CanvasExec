@@ -109,11 +109,11 @@ const runCommand = (socket, cmd, args, tempDir) => {
         const process = spawn(cmd, args);
 
         process.stdout.on('data', (data) => {
-            socket.send('o' + data.toString().replace(tempDir, ''));
+            socket.send('o' + data.toString().replaceAll(tempDir, ''));
         });
 
         process.stderr.on('data', (data) => {
-            socket.send('e' + data.toString().replace(tempDir, ''));
+            socket.send('e' + data.toString().replaceAll(tempDir, ''));
         });
 
         process.on('close', (code) => {

@@ -280,6 +280,17 @@ const runCode = () => {
         }
 
         terminalElement.innerHTML = "";
+        // idk
+        const timingElement = document.createElement('code');
+        timingElement.id = 'my-timing';
+        timingElement.style.position = 'fixed';
+        timingElement.style.bottom = '0';
+        timingElement.style.right = '0';
+        timingElement.style.fontFamily = 'inherit';
+        timingElement.style.fontSize = '9px';
+        //timingElement.innerText = 'some millisecond count';
+
+        terminalElement.appendChild(timingElement);
 
         // send code to server
         socket.addEventListener('open', (event) => {
@@ -293,8 +304,14 @@ const runCode = () => {
             const message = event.data.slice(1);
             if (status === 'e')
                 errCache += message
-            appendOutput(terminalElement, message, status === 'e' ? '#f22c3d' : '#fff')
-            terminalElement.scrollTop = terminalElement.scrollHeight;
+            if (status === 't') {
+                // display timing
+                document.getElementById('my-timing').innerText = message;
+            } else if (status ==='e' || status === 'o') {
+                appendOutput(terminalElement, message, status === 'e' ? '#f22c3d' : '#fff')
+                terminalElement.scrollTop = terminalElement.scrollHeight;
+
+            }
         });
 
 
@@ -348,7 +365,7 @@ const addToolTip = (div, tip) => {
         arrowWrapper.style.top = '0px';
         arrowWrapper.style.transformOrigin = 'center 0px';
         arrowWrapper.style.transform = 'rotate(180deg)';
-        arrowWrapper.style.left = `${box.width/2}px`;
+        arrowWrapper.style.left = `${box.width / 2}px`;
 
         const arrow = document.createElement('div');
         arrow.className = 'relative top-[-4px] h-2 w-2 rotate-45 transform shadow-xs dark:border-r dark:border-b border-white/10 bg-gray-950';
@@ -361,7 +378,7 @@ const addToolTip = (div, tip) => {
 
         const contentBox = wrapper.getBoundingClientRect();
 
-        wrapper.style.transform = `translate(${box.left-window.scrollX}px, ${box.bottom-window.scrollY}px`;
+        wrapper.style.transform = `translate(${box.left - window.scrollX}px, ${box.bottom - window.scrollY}px`;
 
         wrapper.setAttribute('id', target.id + 'tooltip');
         document.body.appendChild(wrapper);

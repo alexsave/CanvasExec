@@ -68,11 +68,13 @@ server.on('connection', (socket) => {
 
             // Calculate elapsed time in milliseconds
             const elapsedMilliseconds = (elapsedTime[0] * 1000) + (elapsedTime[1] / 1e6);
-            socket.send(`Execution completed in ${elapsedMilliseconds.toFixed(2)} ms.`);
+            socket.send(`t${elapsedMilliseconds.toFixed(2)}ms`);
 
             if (!customFolder) cleanUp(tempDir);
         } catch (error) {
             socket.send(`Error: ${error.message}`);
+        } finally {
+            socket.close();
         }
     });
 });
@@ -117,7 +119,6 @@ const runCommand = (socket, cmd, args, tempDir) => {
         });
 
         process.on('close', (code) => {
-            socket.close();
             if (code === 0) {
                 resolve();
             } else {
@@ -145,7 +146,7 @@ const languageHandlers = {
         checkCommand: 'bash --version',
         installCommand: getInstallCommand('bash'),
         execute: async (socket, fileName, tempDir) => {
-            await ensureToolInstalled('bash', socket);
+            //await ensureToolInstalled('bash', socket);
             await runCommand(socket, 'bash', [fileName], tempDir);
         }
     },
@@ -153,7 +154,7 @@ const languageHandlers = {
         checkCommand: platform === 'win32' ? 'python --version' : 'python3 --version',
         installCommand: getInstallCommand('python3'),
         execute: async (socket, fileName, tempDir) => {
-            await ensureToolInstalled('python', socket);
+            //await ensureToolInstalled('python', socket);
             await runCommand(socket, platform === 'win32' ? 'python' : 'python3', [fileName], tempDir);
         }
     },
@@ -161,7 +162,7 @@ const languageHandlers = {
         checkCommand: 'node --version',
         installCommand: getInstallCommand('node'),
         execute: async (socket, fileName, tempDir) => {
-            await ensureToolInstalled('javascript', socket);
+            //await ensureToolInstalled('javascript', socket);
             await runCommand(socket, 'node', [fileName], tempDir);
         }
     },
@@ -169,7 +170,7 @@ const languageHandlers = {
         checkCommand: 'javac -version && java -version',
         installCommand: getInstallCommand('openjdk'),
         execute: async (socket, fileName, tempDir) => {
-            await ensureToolInstalled('java', socket);
+            //await ensureToolInstalled('java', socket);
 
             // Compile step
             await runCommand(socket, 'javac', [fileName], tempDir);
@@ -182,7 +183,7 @@ const languageHandlers = {
         checkCommand: 'gcc --version',
         installCommand: getInstallCommand('gcc'),
         execute: async (socket, fileName, tempDir) => {
-            await ensureToolInstalled('c', socket);
+            //await ensureToolInstalled('c', socket);
 
             // Compile step
             const compiledFile = path.join(tempDir, 'program');
@@ -196,7 +197,7 @@ const languageHandlers = {
         checkCommand: 'g++ --version',
         installCommand: getInstallCommand('gcc'), // g++ comes with GCC
         execute: async (socket, fileName, tempDir) => {
-            await ensureToolInstalled('cpp', socket);
+            //await ensureToolInstalled('cpp', socket);
 
             // Compile step
             const compiledFile = path.join(tempDir, 'program');

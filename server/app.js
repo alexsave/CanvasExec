@@ -109,6 +109,9 @@ const executeCode = async (socket, code, language, customFolder) => {
             return;
         }
 
+        //compile, etc. Don't want this to affect timing
+        await handler.preExecute(socket, fileName, tempDir);
+
         const startTime = process.hrtime(); // Start timer
         await handler.execute(socket, fileName, tempDir);
         const elapsedTime = process.hrtime(startTime); // End timer
@@ -157,19 +160,29 @@ const runCommand = (socket, cmd, args, tempDir) => {
         const process = spawn(cmd, args);
 
         process.stdout.on('data', (data) => {
+            console.log(data.toString());
             socket.send('o' + data.toString().replaceAll(tempDir, ''));
         });
 
         process.stderr.on('data', (data) => {
+            console.log(data.toString());
             socket.send('e' + data.toString().replaceAll(tempDir, ''));
         });
 
-        process.on('close', (code) => {
-            if (code === 0) {
+        process.on('close', (code, signal) => {
+            console.log(code);
+            if (signal === 'SIGSEGV') {
+                reject(new Error(`Command terminated due to a segmentation fault (signal: ${signal})`));
+            } else if (code === 0) {
                 resolve();
             } else {
                 reject(new Error(`Command failed with exit code ${code}`));
             }
+        });
+
+        process.on('error', (err) => {
+            console.log(err);
+            reject(new Error(`Failed to start process: ${err.message}`));
         });
     });
 };
@@ -191,6 +204,7 @@ const languageHandlers = {
     bash: {
         checkCommand: 'bash --version',
         installCommand: getInstallCommand('bash'),
+        preExecute: _ => {},
         execute: async (socket, fileName, tempDir) => {
             //await ensureToolInstalled('bash', socket);
             await runCommand(socket, 'bash', [fileName], tempDir);
@@ -199,6 +213,7 @@ const languageHandlers = {
     python: {
         checkCommand: platform === 'win32' ? 'python --version' : 'python3 --version',
         installCommand: getInstallCommand('python3'),
+        preExecute: _ => {},
         execute: async (socket, fileName, tempDir) => {
             //await ensureToolInstalled('python', socket);
             await runCommand(socket, platform === 'win32' ? 'python' : 'python3', [fileName], tempDir);
@@ -207,6 +222,7 @@ const languageHandlers = {
     javascript: {
         checkCommand: 'node --version',
         installCommand: getInstallCommand('node'),
+        preExecute: _ => {},
         execute: async (socket, fileName, tempDir) => {
             //await ensureToolInstalled('javascript', socket);
             await runCommand(socket, 'node', [fileName], tempDir);
@@ -215,12 +231,12 @@ const languageHandlers = {
     java: {
         checkCommand: 'javac -version && java -version',
         installCommand: getInstallCommand('openjdk'),
-        execute: async (socket, fileName, tempDir) => {
-            //await ensureToolInstalled('java', socket);
-
+        preExecute: async (socket, fileName, tempDir) => {
             // Compile step
+            //await ensureToolInstalled('java', socket);
             await runCommand(socket, 'javac', [fileName], tempDir);
-
+        },
+        execute: async (socket, fileName, tempDir) => {
             // Run compiled Java program
             await runCommand(socket, 'java', ['-cp', tempDir, 'Main'], tempDir);
         }
@@ -228,29 +244,34 @@ const languageHandlers = {
     c: {
         checkCommand: 'gcc --version',
         installCommand: getInstallCommand('gcc'),
-        execute: async (socket, fileName, tempDir) => {
-            //await ensureToolInstalled('c', socket);
-
+        preExecute: async (socket, fileName, tempDir) => {
             // Compile step
+            //await ensureToolInstalled('c', socket);
             const compiledFile = path.join(tempDir, 'program');
             await runCommand(socket, 'gcc', [fileName, '-o', compiledFile], tempDir);
+        },
+        execute: async (socket, fileName, tempDir) => {
+
 
             // Run compiled program
-            await runCommand(socket, compiledFile, [], tempDir);
+            // timing should go here
+            await runCommand(socket, path.join(tempDir, 'program'), [], tempDir);
         }
     },
     cpp: {
         checkCommand: 'g++ --version',
         installCommand: getInstallCommand('gcc'), // g++ comes with GCC
-        execute: async (socket, fileName, tempDir) => {
+        preExecute: async (socket, fileName, tempDir) => {
             //await ensureToolInstalled('cpp', socket);
 
             // Compile step
             const compiledFile = path.join(tempDir, 'program');
             await runCommand(socket, 'g++', [fileName, '-o', compiledFile], tempDir);
+        },
+        execute: async (socket, fileName, tempDir) => {
 
             // Run compiled program
-            await runCommand(socket, compiledFile, [], tempDir);
+            await runCommand(socket, path.join(tempDir, 'program'), [], tempDir);
         }
     }
 };

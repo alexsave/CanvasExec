@@ -248,7 +248,7 @@ const runFixCode = async () => {
 const runCode = () => {
     return new Promise((resolve, reject) => {
         console.log('running code');
-        //Now this is where it gets really fucking tricky
+        // interesting note: this won't work if you ask for python code, then switch to C
         const language = document.querySelector('#codemirror .cm-content').getAttribute('data-language');
         const code = [...document.querySelectorAll('#codemirror .cm-line')].map(x => x.innerText).join('\n');
 
@@ -422,6 +422,7 @@ const checkAddButton = () => {
         return;
 
     // I just want styles, let's see what this does
+    // these should probably be hidden during execution or GPT code edits
     const runBlock = existingBlock.cloneNode(true);
     runBlock.id = 'my-run-block';
     runBlock.innerHTML = '';

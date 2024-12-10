@@ -316,68 +316,138 @@ const runCode = () => {
 
 }
 
+const addToolTip = (div, tip) => {
+    const target = div;
+
+    target.addEventListener('mouseenter', () => {
+        let box = target.getBoundingClientRect();
+        console.log(box);
+        // Create outer wrapper div
+        const wrapper = document.createElement('div');
+        wrapper.style.position = 'fixed';
+        wrapper.style.left = '0px';
+        wrapper.style.top = '0px';
+
+        console.log(wrapper.style.transform)
+
+        wrapper.style.minWidth = 'max-content';
+        wrapper.style.zIndex = '50';
+        wrapper.style.willChange = 'transform';
+
+        // Create content div
+        const content = document.createElement('div');
+        content.className = 'relative z-50 select-none shadow-xs transition-opacity px-3 py-2 rounded-lg border-white/10 dark:border bg-gray-950 max-w-xs';
+
+        // Add tooltip text
+        const text = document.createElement('span');
+        text.className = 'flex items-center whitespace-pre-wrap font-semibold normal-case text-center text-gray-100 text-sm';
+        text.innerText = tip;
+        content.appendChild(text);
+
+        // Add arrow
+        const arrowWrapper = document.createElement('span');
+        arrowWrapper.style.position = 'absolute';
+        arrowWrapper.style.top = '0px';
+        arrowWrapper.style.transformOrigin = 'center 0px';
+        arrowWrapper.style.transform = 'rotate(180deg)';
+        arrowWrapper.style.left = `${box.width/2}px`;
+
+        const arrow = document.createElement('div');
+        arrow.className = 'relative top-[-4px] h-2 w-2 rotate-45 transform shadow-xs dark:border-r dark:border-b border-white/10 bg-gray-950';
+        arrow.style.display = 'block';
+        arrowWrapper.appendChild(arrow);
+
+        content.appendChild(arrowWrapper);
+
+        wrapper.appendChild(content);
+
+        const contentBox = wrapper.getBoundingClientRect();
+        console.log(contentBox);
+
+        wrapper.style.transform = `translate(${box.left-window.scrollX}px, ${box.bottom-window.scrollY}px`;
+
+        wrapper.setAttribute('id', target.id + 'tooltip');
+        document.body.appendChild(wrapper);
+    });
+
+    target.addEventListener('mouseleave', () => {
+        // Remove tooltip
+        const tooltip = document.getElementById(target.id + 'tooltip');
+        if (tooltip) {
+            tooltip.remove();
+        }
+    });
+
+}
+
 
 const checkAddButton = () => {
-    //document.querySelector
-    let row = document.querySelector('header .items-center .items-center');
-    //console.log('row')
-    if (row) {
-        //alread added
-        if (row.querySelector('#my-run-button') && row.querySelector('#my-run-button')) {
-            clearInterval(checkAddButton);
-        }
 
-        if (!row.querySelector('#my-run-button')) {
-
-
-            const runButton = row.firstChild.cloneNode(true)
-            const svgPath = runButton.querySelector('svg path');
-            if (svgPath) {
-                svgPath.setAttribute(
-                    'd',
-                    'M3 2L21 12L3 22V2Z' // A basic right-pointing play button shape
-                );
-            }
-
-            //runButton.onClick = runCode;
-            runButton.addEventListener('click', runCode);
-            runButton.id = 'my-run-button';
-
-            row.prepend(runButton);
-        }
-
-        if (!row.querySelector('#my-run-fix-button')) {
-
-
-            const runButton = row.firstChild.cloneNode(true)
-            const svgPath = runButton.querySelector('svg path');
-            if (svgPath) {
-                svgPath.setAttribute(
-                    'd',
-                    //idk
-                    "M 3 2 L 18 12 L 3 22 V 2 Z M 8 2 L 23 12 L 8 22 Z M 20 9 A 4 4 90 0 1 24 5 A 4 4 90 0 1 20 1 A 4 4 90 0 1 16 5 A 4 4 90 0 1 20 9"
-                    //'M3 2L21 12L3 22V2Z ' + // First play button
-                    //'M6 4L24 14L6 24V4Z ' + // Second overlaid play button, shifted slightly
-                    //'M28 8L30 10L32 8L30 6L28 8Z ' + // Sparkle star: center
-                    //'M30 5L30 11M27 8L33 8' // Horizontal and vertical sparkle lines
-                );
-            }
-
-            //runButton.onClick = runCode;
-            runButton.addEventListener('click', runFixCode);
-            runButton.id = 'my-run-fix-button';
-
-            row.prepend(runButton);
-        }
-
-
+    // header will be there
+    // but .items-center won't always
+    if (document.getElementById('my-run-block')) {
+        clearInterval(checkAddButton);
+        return;
     }
+
+    const header = document.querySelector('header');
+
+    // Canvas not opened
+    if (!header)
+        return;
+
+    let existingBlock = document.querySelector('header').lastChild;
+    // Still Canvas not opened
+    if (!existingBlock)
+        return;
+
+    const sampleButton = existingBlock.querySelector('button')
+
+    // Also canvas not opened
+    if (!sampleButton)
+        return;
+
+    // I just want styles, let's see what this does
+    const runBlock = existingBlock.cloneNode(true);
+    runBlock.id = 'my-run-block';
+    runBlock.innerHTML = '';
+
+    const runButton = sampleButton.cloneNode(true);
+    let svgPath = runButton.querySelector('svg path');
+    if (svgPath) {
+        svgPath.setAttribute(
+            'd',
+            'M3 2L21 12L3 22V2Z' // A basic right-pointing play button shape
+        );
+    }
+    runButton.addEventListener('click', runCode);
+    runButton.id = 'my-run-button';
+    runBlock.prepend(runButton);
+
+    const fixButton = sampleButton.cloneNode(true);
+    svgPath = fixButton.querySelector('svg path');
+    if (svgPath) {
+        svgPath.setAttribute(
+            'd',
+            //idk
+            "M 3 2 L 18 12 L 3 22 V 2 Z M 8 2 L 23 12 L 8 22 Z M 20 9 A 4 4 90 0 1 24 5 A 4 4 90 0 1 20 1 A 4 4 90 0 1 16 5 A 4 4 90 0 1 20 9"
+        );
+    }
+
+    fixButton.addEventListener('click', runFixCode);
+    fixButton.id = 'my-run-fix-button';
+    runBlock.prepend(fixButton);
+
+    addToolTip(runButton, 'Run')
+    addToolTip(fixButton, 'Fix & Loop')
+
+    header.insertBefore(runBlock, existingBlock);
+
 }
 
 
 (async _ => {
     await waitForNetworkIdle();
+    // I guess we could wait for dom manipulation instead of every .5s
     setInterval(checkAddButton, 500);
-
-
 })()

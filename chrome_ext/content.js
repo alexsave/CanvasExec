@@ -321,14 +321,12 @@ const addToolTip = (div, tip) => {
 
     target.addEventListener('mouseenter', () => {
         let box = target.getBoundingClientRect();
-        console.log(box);
         // Create outer wrapper div
         const wrapper = document.createElement('div');
         wrapper.style.position = 'fixed';
         wrapper.style.left = '0px';
         wrapper.style.top = '0px';
 
-        console.log(wrapper.style.transform)
 
         wrapper.style.minWidth = 'max-content';
         wrapper.style.zIndex = '50';
@@ -362,7 +360,6 @@ const addToolTip = (div, tip) => {
         wrapper.appendChild(content);
 
         const contentBox = wrapper.getBoundingClientRect();
-        console.log(contentBox);
 
         wrapper.style.transform = `translate(${box.left-window.scrollX}px, ${box.bottom-window.scrollY}px`;
 

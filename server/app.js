@@ -19,11 +19,16 @@ const installCommands = {
     win32: 'choco install {{package}} -y' // Assuming Chocolatey is available on Windows
 };
 
-// WebSocket server
-const server = new WebSocket.Server({ port: 4001 });
 
-server.on('connection', (socket) => {
-    console.log('Client connected');
+// WebSocket server
+const server = new WebSocket.Server({ port: 4001, host: '127.0.0.1' });
+
+server.on('connection', (socket, req) => {
+    console.log(`Client connected from: ${req.socket.remoteAddress}`);
+
+
+    let pendingUUID = null; // Variable to store pending UUID
+    let pendingExecution = null; // Variable to store the execution context
 
     socket.on('message', async (message) => {
         try {

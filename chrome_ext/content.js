@@ -1,4 +1,4 @@
-
+const uuid = crypto.randomUUID();
 const serverUrl = 'ws://localhost:4001';
 
 function waitForNetworkIdle(timeout = 1000, checkInterval = 500) {
@@ -255,7 +255,7 @@ const runCode = () => {
         //console.log('Running ' + code + ' in ' + lang);
 
         // we need to send this to backend
-        const request = { language, code };
+        const request = { language, code, uuid };
 
         const socket = new WebSocket(serverUrl);
 

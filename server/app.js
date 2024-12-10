@@ -1,4 +1,5 @@
 const WebSocket = require('ws');
+const readline = require('readline');
 const { exec, spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
@@ -19,6 +20,13 @@ const installCommands = {
     win32: 'choco install {{package}} -y' // Assuming Chocolatey is available on Windows
 };
 
+// Set up readline interface for user input
+const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+});
+
+const savedUUIDs = new Set();
 
 // WebSocket server
 const server = new WebSocket.Server({ port: 4001, host: '127.0.0.1' });
@@ -27,62 +35,95 @@ server.on('connection', (socket, req) => {
     console.log(`Client connected from: ${req.socket.remoteAddress}`);
 
 
-    let pendingUUID = null; // Variable to store pending UUID
-    let pendingExecution = null; // Variable to store the execution context
-
     socket.on('message', async (message) => {
         try {
-            const { code, language, customFolder } = JSON.parse(message);
+            const parsedMessage = JSON.parse(message);
 
+            const uuid = parsedMessage.uuid;
+
+            // Step 1: Receive UUID
+            //const { uuid } = parsedMessage;
+            if (!uuid) {
+                socket.send('Error: Missing UUID');
+                return;
+            }
+
+            const { code, language, customFolder } = parsedMessage;
             if (!code || !language) {
                 socket.send('Error: Missing code or language');
                 return;
             }
 
-            let tempDir;
-            if (customFolder) {
-                if (!fs.existsSync(customFolder)) {
-                    socket.send(`Error: Custom folder ${customFolder} does not exist`);
-                    return;
-                }
-                tempDir = customFolder;
-            } else {
-                tempDir = fs.mkdtempSync(path.join(__dirname, 'temp-'));
+            if (savedUUIDs.has(uuid)) {
+                executeCode(socket, code, language, customFolder);
+            }else {
+                console.log(`Received UUID from client: ${uuid}`);
+
+                // Present UUID to user for confirmation
+                rl.question(`Do you confirm the execution for UUID: ${uuid}? (yes/no): `, (answer) => {
+                    if (answer.toLowerCase() === 'yes') {
+                        savedUUIDs.add(uuid);
+                        executeCode(socket, code, language, customFolder);
+                    } else {
+                        socket.send('Execution not confirmed by the user.');
+                        socket.close();
+                        return;
+                    }
+                });
             }
 
-            const fileName = getFileName(tempDir, language);
-            if (!fileName) {
-                socket.send(`Error: Unsupported language ${language}`);
-                if (!customFolder) cleanUp(tempDir);
-                return;
-            }
-
-            fs.writeFileSync(fileName, code);
-
-            // Delegate execution to the respective language handler
-            const handler = getLanguageHandler(language);
-            if (!handler) {
-                socket.send(`Error: No handler found for language ${language}`);
-                if (!customFolder) cleanUp(tempDir);
-                return;
-            }
-
-            const startTime = process.hrtime(); // Start timer
-            await handler.execute(socket, fileName, tempDir);
-            const elapsedTime = process.hrtime(startTime); // End timer
-
-            // Calculate elapsed time in milliseconds
-            const elapsedMilliseconds = (elapsedTime[0] * 1000) + (elapsedTime[1] / 1e6);
-            socket.send(`t${elapsedMilliseconds.toFixed(2)}ms`);
-
-            if (!customFolder) cleanUp(tempDir);
         } catch (error) {
             socket.send(`Error: ${error.message}`);
-        } finally {
-            socket.close();
         }
     });
 });
+
+const executeCode = async (socket, code, language, customFolder) => {
+    console.log('executing');
+    try {
+        let tempDir;
+        if (customFolder) {
+            if (!fs.existsSync(customFolder)) {
+                socket.send(`Error: Custom folder ${customFolder} does not exist`);
+                return;
+            }
+            tempDir = customFolder;
+        } else {
+            tempDir = fs.mkdtempSync(path.join(__dirname, 'temp-'));
+        }
+
+        const fileName = getFileName(tempDir, language);
+        if (!fileName) {
+            socket.send(`Error: Unsupported language ${language}`);
+            if (!customFolder) cleanUp(tempDir);
+            return;
+        }
+
+        fs.writeFileSync(fileName, code);
+
+        // Delegate execution to the respective language handler
+        const handler = getLanguageHandler(language);
+        if (!handler) {
+            socket.send(`Error: No handler found for language ${language}`);
+            if (!customFolder) cleanUp(tempDir);
+            return;
+        }
+
+        const startTime = process.hrtime(); // Start timer
+        await handler.execute(socket, fileName, tempDir);
+        const elapsedTime = process.hrtime(startTime); // End timer
+
+        // Calculate elapsed time in milliseconds
+        const elapsedMilliseconds = (elapsedTime[0] * 1000) + (elapsedTime[1] / 1e6);
+        socket.send(`t${elapsedMilliseconds.toFixed(2)}ms`);
+
+        if (!customFolder) cleanUp(tempDir);
+    } catch (error) {
+        socket.send(`Error: ${error.message}`);
+    } finally {
+        socket.close();
+    }
+};
 
 const getInstallCommand = (packageName) => {
     const commandTemplate = installCommands[platform];

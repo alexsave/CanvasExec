@@ -199,7 +199,7 @@ const runFixCode = async () => {
     errCache = '';
     console.log(errCache);
 
-    await runCode();
+    await fetchAndRunCode();
 
     if (errCache === '')
         return;
@@ -245,12 +245,105 @@ const runFixCode = async () => {
     //runFixCode();
 };
 
-const runCode = () => {
+const fetchAndRunCode = async _ => {
+    console.log('getting code');
+    const code = await getCode();
+    console.log('got code ' + code)
+    await runCode(code);
+    console.log('ran code');
+};
+
+const getCode = async () => {
+
+
+    // the best solution seems to be literally emulate the current workflow of copying to another ide
+    // so hit the copy button
+    /*
+    setTimeout(async () => {
+    await new Promise(r => setTimeout(r, 300)); // Short delay after the click
+    try {
+        const clipboardText = await navigator.clipboard.readText();
+        console.log('Clipboard contents:', clipboardText);
+    } catch (err) {
+        console.error('Clipboard access failed:', err);
+    }
+}, 2000);
+this works, but I want to try intercepting the keyboard call. that is tricky though, i don't think it likes overwriting
+*/
+    // Perform actions: Click the button
+    const button = document.querySelector('header :nth-child(3) > span button');
+    if (!button) {
+        console.log('no  button')
+        // Restore if the button is not found
+        navigator.clipboard.write = originalWrite;
+        reject(new Error(`Button not found for selector: ${selector}`));
+        return;
+    }
+    button.click();
+
+    await delay(300);
+    try {
+        const clipboardText = await navigator.clipboard.readText();
+        console.log('Clipboard contents:', clipboardText);
+        return clipboardText;
+    } catch (err) {
+        console.error('Clipboard access failed:', err);
+    }
+}
+
+const getCode2 = () => {
+    return new Promise((resolve, reject) => {
+        // Backup the original write method
+        const originalWrite = navigator.clipboard.write;
+        const originalWriteText = navigator.clipboard.writeText;
+        if (!navigator.clipboard) {
+            console.log('clipboard is null somehow')
+        }
+        try {
+            // Overwrite write to intercept calls
+            navigator.clipboard.write = async function (data) {
+                console.log('Intercepted write:', data);
+                originalWrite(data);
+                navigator.clipboard.write = originalWrite;
+                resolve(data);
+            };
+            navigator.clipboard.writeText = async function (data) {
+                console.log('Intercepted writeText:', data);
+                originalWriteText(data);
+                navigator.clipboard.writeText = originalWriteText;
+                resolve(data);
+            };
+
+            // Perform actions: Click the button
+            const button = document.querySelector('header :nth-child(3) > span button');
+            if (!button) {
+                console.log('no  button')
+                // Restore if the button is not found
+                navigator.clipboard.write = originalWrite;
+                reject(new Error(`Button not found for selector: ${selector}`));
+                return;
+            }
+            button.click();
+
+        } catch (err) {
+            console.log(err)
+            // Restore and reject in case of any error
+            navigator.clipboard.write = originalWrite;
+            navigator.clipboard.writeText = originalWriteText;
+            reject(err);
+        }
+    });
+}
+
+const runCode = (code) => {
     return new Promise((resolve, reject) => {
         console.log('running code');
         // interesting note: this won't work if you ask for python code, then switch to C
         const language = document.querySelector('#codemirror .cm-content').getAttribute('data-language');
-        const code = [...document.querySelectorAll('#codemirror .cm-line')].map(x => x.innerText).join('\n');
+
+
+        // so if the code is a bit longer, this won't work
+        //const code = [...document.querySelectorAll('#codemirror .cm-line')].map(x => x.innerText).join('\n');
 
         //console.log('Running ' + code + ' in ' + lang);
 
@@ -307,7 +400,7 @@ const runCode = () => {
             if (status === 't') {
                 // display timing
                 document.getElementById('my-timing').innerText = message;
-            } else if (status ==='e' || status === 'o') {
+            } else if (status === 'e' || status === 'o') {
                 appendOutput(terminalElement, message, status === 'e' ? '#f22c3d' : '#fff')
                 terminalElement.scrollTop = terminalElement.scrollHeight;
 
@@ -422,6 +515,7 @@ const checkAddButton = () => {
         return;
 
     // I just want styles, let's see what this does
+    // ok sometimes these just don't show up after first reload
     // these should probably be hidden during execution or GPT code edits
     const runBlock = existingBlock.cloneNode(true);
     runBlock.id = 'my-run-block';
@@ -435,7 +529,7 @@ const checkAddButton = () => {
             'M3 2L21 12L3 22V2Z' // A basic right-pointing play button shape
         );
     }
-    runButton.addEventListener('click', runCode);
+    runButton.addEventListener('click', fetchAndRunCode);
     runButton.id = 'my-run-button';
     runBlock.prepend(runButton);
 

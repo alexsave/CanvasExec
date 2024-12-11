@@ -80,8 +80,8 @@ server.on('connection', (socket, req) => {
 
 const executeCode = async (socket, code, language, customFolder) => {
     console.log('executing');
+    let tempDir;
     try {
-        let tempDir;
         if (customFolder) {
             if (!fs.existsSync(customFolder)) {
                 socket.send(`Error: Custom folder ${customFolder} does not exist`);
@@ -109,21 +109,30 @@ const executeCode = async (socket, code, language, customFolder) => {
             return;
         }
 
-        //compile, etc. Don't want this to affect timing
-        await handler.preExecute(socket, fileName, tempDir);
+        try {
+            //compile, etc. Don't want this to affect timing
+            await handler.preExecute(socket, fileName, tempDir);
 
-        const startTime = process.hrtime(); // Start timer
-        await handler.execute(socket, fileName, tempDir);
-        const elapsedTime = process.hrtime(startTime); // End timer
+            try {
+                const startTime = process.hrtime(); // Start timer
+                await handler.execute(socket, fileName, tempDir);
+                const elapsedTime = process.hrtime(startTime); // End timer
 
-        // Calculate elapsed time in milliseconds
-        const elapsedMilliseconds = (elapsedTime[0] * 1000) + (elapsedTime[1] / 1e6);
-        socket.send(`t${elapsedMilliseconds.toFixed(2)}ms`);
+                // Calculate elapsed time in milliseconds
+                const elapsedMilliseconds = (elapsedTime[0] * 1000) + (elapsedTime[1] / 1e6);
+                socket.send(`t${elapsedMilliseconds.toFixed(2)}ms`);
+            } catch (error) {
+                socket.send(`eRun failed: ${error.message}`);
+            }
 
-        if (!customFolder) cleanUp(tempDir);
+        } catch (error) {
+            socket.send(`eCompilation failed: ${error.message}`);
+        }
+
     } catch (error) {
-        socket.send(`Error: ${error.message}`);
+        socket.send(`eError: ${error.message}`);
     } finally {
+        if (!customFolder) cleanUp(tempDir);
         socket.close();
     }
 };
@@ -160,28 +169,37 @@ const runCommand = (socket, cmd, args, tempDir) => {
         const process = spawn(cmd, args);
 
         process.stdout.on('data', (data) => {
-            console.log(data.toString());
+            console.log('stdout data ' + data.toString());
             socket.send('o' + data.toString().replaceAll(tempDir, ''));
         });
 
         process.stderr.on('data', (data) => {
-            console.log(data.toString());
+            console.log('stderr data ' + data.toString());
             socket.send('e' + data.toString().replaceAll(tempDir, ''));
         });
 
-        process.on('close', (code, signal) => {
-            console.log(code);
-            if (signal === 'SIGSEGV') {
-                reject(new Error(`Command terminated due to a segmentation fault (signal: ${signal})`));
-            } else if (code === 0) {
+        process.on('disconnect', idk => {
+            console.log('disconnect', idk);
+        });
+
+        process.on('close', (cod, signal) => {
+            console.log('close ' + cod);
+            //if (signal === 'SIGSEGV') {
+            //reject(new Error(`Command terminated due to a segmentation fault (signal: ${signal})`));
+            //} else 
+            if (cod === 0) {
                 resolve();
             } else {
-                reject(new Error(`Command failed with exit code ${code}`));
+                reject(new Error(`Command failed with exit code ${cod} (signal: ${signal})`));
             }
         });
 
+        process.on('exit', (cod, signal) => {
+            console.log(`Process exited with code: ${cod}, signal: ${signal}`);
+        });
+
         process.on('error', (err) => {
-            console.log(err);
+            console.log('error ' + err);
             reject(new Error(`Failed to start process: ${err.message}`));
         });
     });
@@ -204,7 +222,7 @@ const languageHandlers = {
     bash: {
         checkCommand: 'bash --version',
         installCommand: getInstallCommand('bash'),
-        preExecute: _ => {},
+        preExecute: _ => { },
         execute: async (socket, fileName, tempDir) => {
             //await ensureToolInstalled('bash', socket);
             await runCommand(socket, 'bash', [fileName], tempDir);
@@ -213,7 +231,7 @@ const languageHandlers = {
     python: {
         checkCommand: platform === 'win32' ? 'python --version' : 'python3 --version',
         installCommand: getInstallCommand('python3'),
-        preExecute: _ => {},
+        preExecute: _ => { },
         execute: async (socket, fileName, tempDir) => {
             //await ensureToolInstalled('python', socket);
             await runCommand(socket, platform === 'win32' ? 'python' : 'python3', [fileName], tempDir);
@@ -222,7 +240,7 @@ const languageHandlers = {
     javascript: {
         checkCommand: 'node --version',
         installCommand: getInstallCommand('node'),
-        preExecute: _ => {},
+        preExecute: _ => { },
         execute: async (socket, fileName, tempDir) => {
             //await ensureToolInstalled('javascript', socket);
             await runCommand(socket, 'node', [fileName], tempDir);

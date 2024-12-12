@@ -34,7 +34,6 @@ const server = new WebSocket.Server({ port: 4001, host: '127.0.0.1' });
 server.on('connection', (socket, req) => {
     console.log(`Client connected from: ${req.socket.remoteAddress}`);
 
-
     socket.on('message', async (message) => {
         try {
             const parsedMessage = JSON.parse(message);
@@ -56,7 +55,7 @@ server.on('connection', (socket, req) => {
 
             if (savedUUIDs.has(uuid)) {
                 executeCode(socket, code, language, customFolder);
-            }else {
+            } else {
                 console.log(`Received UUID from client: ${uuid}`);
 
                 // Present UUID to user for confirmation
@@ -92,7 +91,7 @@ const executeCode = async (socket, code, language, customFolder) => {
             tempDir = fs.mkdtempSync(path.join(__dirname, 'temp-'));
         }
 
-        const fileName = getFileName(tempDir, language);
+        const fileName = path.join(tempDir, languageHandlers[language][fileName]);
         if (!fileName) {
             socket.send(`Error: Unsupported language ${language}`);
             if (!customFolder) cleanUp(tempDir);
@@ -205,23 +204,12 @@ const runCommand = (socket, cmd, args, tempDir) => {
     });
 };
 
-const getFileName = (dir, language) => {
-    switch (language) {
-        case 'bash': return path.join(dir, 'script.sh');
-        case 'python': return path.join(dir, 'script.py');
-        case 'javascript': return path.join(dir, 'script.js');
-        case 'java': return path.join(dir, 'Main.java');
-        case 'c': return path.join(dir, 'program.c');
-        case 'cpp': return path.join(dir, 'program.cpp');
-        default: return null;
-    }
-};
-
 // Language Handlers
 const languageHandlers = {
     bash: {
         checkCommand: 'bash --version',
         installCommand: getInstallCommand('bash'),
+        fileName: 'script.sh',
         preExecute: _ => { },
         execute: async (socket, fileName, tempDir) => {
             //await ensureToolInstalled('bash', socket);
@@ -231,6 +219,7 @@ const languageHandlers = {
     python: {
         checkCommand: platform === 'win32' ? 'python --version' : 'python3 --version',
         installCommand: getInstallCommand('python3'),
+        fileName: 'script.py',
         preExecute: _ => { },
         execute: async (socket, fileName, tempDir) => {
             //await ensureToolInstalled('python', socket);
@@ -240,6 +229,7 @@ const languageHandlers = {
     javascript: {
         checkCommand: 'node --version',
         installCommand: getInstallCommand('node'),
+        fileName: 'script.js',
         preExecute: _ => { },
         execute: async (socket, fileName, tempDir) => {
             //await ensureToolInstalled('javascript', socket);
@@ -249,6 +239,7 @@ const languageHandlers = {
     java: {
         checkCommand: 'javac -version && java -version',
         installCommand: getInstallCommand('openjdk'),
+        fileName: 'Main.java',
         preExecute: async (socket, fileName, tempDir) => {
             // Compile step
             //await ensureToolInstalled('java', socket);
@@ -262,6 +253,7 @@ const languageHandlers = {
     c: {
         checkCommand: 'gcc --version',
         installCommand: getInstallCommand('gcc'),
+        fileName: 'program.c',
         preExecute: async (socket, fileName, tempDir) => {
             // Compile step
             //await ensureToolInstalled('c', socket);
@@ -269,8 +261,6 @@ const languageHandlers = {
             await runCommand(socket, 'gcc', [fileName, '-o', compiledFile], tempDir);
         },
         execute: async (socket, fileName, tempDir) => {
-
-
             // Run compiled program
             // timing should go here
             await runCommand(socket, path.join(tempDir, 'program'), [], tempDir);
@@ -279,6 +269,7 @@ const languageHandlers = {
     cpp: {
         checkCommand: 'g++ --version',
         installCommand: getInstallCommand('gcc'), // g++ comes with GCC
+        fileName: dir => 'program.cpp',
         preExecute: async (socket, fileName, tempDir) => {
             //await ensureToolInstalled('cpp', socket);
 

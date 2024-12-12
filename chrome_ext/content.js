@@ -1,7 +1,7 @@
 const uuid = crypto.randomUUID();
 const serverUrl = 'ws://localhost:4001';
 
-function waitForNetworkIdle(timeout = 1000, checkInterval = 500) {
+function waitForNetworkIdle(checkInterval = 500) {
     return new Promise((resolve) => {
         let lastActiveTimestamp = Date.now();
 
@@ -37,63 +37,6 @@ function waitForNetworkIdle(timeout = 1000, checkInterval = 500) {
         // Start the check process
         check();
 
-    });
-}
-
-function waitForNetworkIdle2(timeout = 1000, checkInterval = 500) {
-    return new Promise((resolve) => {
-        let lastActiveTimestamp = Date.now();
-        let activeRequests = 0;
-
-        const check = () => {
-            const now = Date.now();
-
-            // If there are no active requests and the timeout has elapsed
-            if (activeRequests === 0 && now - lastActiveTimestamp >= timeout) {
-                resolve();
-            } else {
-                // Reset the timer and check again after the check interval
-                setTimeout(check, checkInterval);
-            }
-        };
-
-        const updateLastActiveTimestamp = () => {
-            lastActiveTimestamp = Date.now();
-        };
-
-        const incrementActiveRequests = () => {
-            activeRequests++;
-            updateLastActiveTimestamp();
-        };
-
-        const decrementActiveRequests = () => {
-            activeRequests = Math.max(0, activeRequests - 1);
-            updateLastActiveTimestamp();
-        };
-
-        // Wrap fetch to track activity
-        const originalFetch = window.fetch;
-        window.fetch = (...args) => {
-            incrementActiveRequests();
-            return originalFetch.apply(this, args).then((response) => {
-                decrementActiveRequests();
-                return response;
-            }).catch((error) => {
-                decrementActiveRequests();
-                throw error;
-            });
-        };
-
-        // Wrap XMLHttpRequest to track activity
-        const originalXHROpen = XMLHttpRequest.prototype.open;
-        XMLHttpRequest.prototype.open = function (...args) {
-            this.addEventListener('loadend', decrementActiveRequests, true);
-            incrementActiveRequests();
-            originalXHROpen.apply(this, args);
-        };
-
-        // Start the check process
-        check();
     });
 }
 
@@ -172,11 +115,9 @@ function waitForNetworkIdleAndDOMStable(timeout = 1000, checkInterval = 500) {
     });
 }
 
-
-
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
-const appendOutput = (terminal, text, color='#fff') => {
+const appendOutput = (terminal, text, color = '#fff') => {
     const chunk = document.createElement('code');
     chunk.style.color = color;
     //chunk.textContent = text.replace(/\n/g, '<br>');
@@ -211,7 +152,7 @@ const runFixCode = async () => {
     const promptBox = document.querySelector('#prompt-textarea');
 
     // simulate Ctrl+V
-    if (!promptBox){
+    if (!promptBox) {
         console.error("Selector not found: #prompt-textarea");
         return;
     }
@@ -232,7 +173,7 @@ const runFixCode = async () => {
         return;
     }*/
     // we have to do this first to really keep track of the loads
-    waitForNetworkIdleAndDOMStable().then(() => {console.log('done, ready for next phase'), runFixCode()});
+    waitForNetworkIdleAndDOMStable().then(() => { console.log('done, ready for next phase'), runFixCode() });
     await delay(100);
     // this works better, just simulate enter rather than button
     promptBox.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true, cancelable: true }));
@@ -254,22 +195,8 @@ const fetchAndRunCode = async _ => {
 };
 
 const getCode = async () => {
-
-
     // the best solution seems to be literally emulate the current workflow of copying to another ide
     // so hit the copy button
-    /*
-    setTimeout(async () => {
-    await new Promise(r => setTimeout(r, 300)); // Short delay after the click
-    try {
-        const clipboardText = await navigator.clipboard.readText();
-        console.log('Clipboard contents:', clipboardText);
-    } catch (err) {
-        console.error('Clipboard access failed:', err);
-    }
-}, 2000);
-this works, but I want to try intercepting the keyboard call. that is tricky though, i don't think it likes overwriting
-*/
     // Perform actions: Click the button
     const button = document.querySelector('header :nth-child(3) > span button');
     if (!button) {
@@ -291,66 +218,14 @@ this works, but I want to try intercepting the keyboard call. that is tricky tho
     }
 }
 
-const getCode2 = () => {
-    return new Promise((resolve, reject) => {
-        // Backup the original write method
-        const originalWrite = navigator.clipboard.write;
-        const originalWriteText = navigator.clipboard.writeText;
-        if (!navigator.clipboard) {
-            console.log('clipboard is null somehow')
-        }
-        try {
-            // Overwrite write to intercept calls
-            navigator.clipboard.write = async function (data) {
-                console.log('Intercepted write:', data);
-                originalWrite(data);
-                navigator.clipboard.write = originalWrite;
-                resolve(data);
-            };
-            navigator.clipboard.writeText = async function (data) {
-                console.log('Intercepted writeText:', data);
-                originalWriteText(data);
-                navigator.clipboard.writeText = originalWriteText;
-                resolve(data);
-            };
-
-            // Perform actions: Click the button
-            const button = document.querySelector('header :nth-child(3) > span button');
-            if (!button) {
-                console.log('no  button')
-                // Restore if the button is not found
-                navigator.clipboard.write = originalWrite;
-                reject(new Error(`Button not found for selector: ${selector}`));
-                return;
-            }
-            button.click();
-
-        } catch (err) {
-            console.log(err)
-            // Restore and reject in case of any error
-            navigator.clipboard.write = originalWrite;
-            navigator.clipboard.writeText = originalWriteText;
-            reject(err);
-        }
-    });
-}
-
 const runCode = (code) => {
     return new Promise((resolve, reject) => {
         console.log('running code');
         // interesting note: this won't work if you ask for python code, then switch to C
         const language = document.querySelector('#codemirror .cm-content').getAttribute('data-language');
 
-
-        // so if the code is a bit longer, this won't work
-        //const code = [...document.querySelectorAll('#codemirror .cm-line')].map(x => x.innerText).join('\n');
-
-        //console.log('Running ' + code + ' in ' + lang);
-
         // we need to send this to backend
         const request = { language, code, uuid };
-
-        const socket = new WebSocket(serverUrl);
 
         let terminalElement = document.querySelector('#my-terminal');
 
@@ -373,6 +248,18 @@ const runCode = (code) => {
         }
 
         terminalElement.innerHTML = "";
+
+        let socket;
+
+        try {
+            socket = new WebSocket(serverUrl);
+        } catch (e) {
+            // no connection. we should still probably log a message to terminal
+            appendOutput(terminalElement, "Connection failed, ensure server is running: node server/app.js.", "#f22c3d")
+
+            resolve();
+        }
+
         // idk
         const timingElement = document.createElement('code');
         timingElement.id = 'my-timing';
@@ -381,9 +268,25 @@ const runCode = (code) => {
         timingElement.style.right = '0';
         timingElement.style.fontFamily = 'inherit';
         timingElement.style.fontSize = '9px';
-        //timingElement.innerText = 'some millisecond count';
 
         terminalElement.appendChild(timingElement);
+
+        setTimeout(() => {
+            // If nothing has been returned after 5s, it's likely that they need to confirm uuid
+            // 2 because timing
+            if (terminalElement.children.length < 2) {
+                appendOutput(terminalElement, "Check server process to confirm request.")
+            }
+        }, 5000)
+
+        // 30s limit
+        setTimeout(() => {
+            // ensure socket closed
+            if (socket.readyState !== WebSocket.CLOSED){
+                appendOutput(terminalElement, "Execution timed out 30s limit.", "#f22c3d")
+                socket.close();
+            }
+        }, 30000)
 
         // send code to server
         socket.addEventListener('open', (event) => {
@@ -407,23 +310,20 @@ const runCode = (code) => {
             }
         });
 
-
         // WebSocket error handling
         socket.addEventListener('error', (event) => {
             console.log('WebSocket error:', event);
+            // probably server not running
             appendOutput(terminalElement, event, '#f22c3d')
+            appendOutput(terminalElement, "\nConnection failed, ensure server is running: node server/app.js", "#f22c3d")
         });
 
         // WebSocket connection closed event
         socket.addEventListener('close', (event) => {
             console.log('WebSocket connection closed:', event);
             resolve();
-            // UI
         });
-
-
     })
-
 }
 
 const addToolTip = (div, tip) => {
@@ -436,7 +336,6 @@ const addToolTip = (div, tip) => {
         wrapper.style.position = 'fixed';
         wrapper.style.left = '0px';
         wrapper.style.top = '0px';
-
 
         wrapper.style.minWidth = 'max-content';
         wrapper.style.zIndex = '50';
@@ -484,12 +383,9 @@ const addToolTip = (div, tip) => {
             tooltip.remove();
         }
     });
-
 }
 
-
 const checkAddButton = () => {
-
     // header will be there
     // but .items-center won't always
     if (document.getElementById('my-run-block')) {
@@ -538,7 +434,6 @@ const checkAddButton = () => {
     if (svgPath) {
         svgPath.setAttribute(
             'd',
-            //idk
             "M 3 2 L 18 12 L 3 22 V 2 Z M 8 2 L 23 12 L 8 22 Z M 20 9 A 4 4 90 0 1 24 5 A 4 4 90 0 1 20 1 A 4 4 90 0 1 16 5 A 4 4 90 0 1 20 9"
         );
     }
@@ -551,12 +446,11 @@ const checkAddButton = () => {
     addToolTip(fixButton, 'Fix & Loop')
 
     header.insertBefore(runBlock, existingBlock);
-
 }
-
 
 (async _ => {
     await waitForNetworkIdle();
     // I guess we could wait for dom manipulation instead of every .5s
+
     setInterval(checkAddButton, 500);
 })()

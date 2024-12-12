@@ -3,13 +3,7 @@
     "name": "Canvas Executor",
     "version": "1.0",
     "permissions": [
-        "scripting",
-        "activeTab",
-        "tabs",
         "clipboardRead"
-    ],
-    "host_permissions": [
-        "*://localhost/*"
     ],
     "content_scripts": [
         {

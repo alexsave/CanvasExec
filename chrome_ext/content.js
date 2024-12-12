@@ -1,6 +1,7 @@
 const uuid = crypto.randomUUID();
 const serverUrl = 'ws://localhost:4001';
 
+// definitley split a lot of this out to ui.js
 function waitForNetworkIdle(checkInterval = 500) {
     return new Promise((resolve) => {
         let lastActiveTimestamp = Date.now();
@@ -282,7 +283,7 @@ const runCode = (code) => {
         // 30s limit
         setTimeout(() => {
             // ensure socket closed
-            if (socket.readyState !== WebSocket.CLOSED){
+            if (socket.readyState !== WebSocket.CLOSED) {
                 appendOutput(terminalElement, "Execution timed out 30s limit.", "#f22c3d")
                 socket.close();
             }
@@ -325,6 +326,56 @@ const runCode = (code) => {
         });
     })
 }
+
+const handleCloseSetting = () => {
+    const div = document.getElementById('my-run-config');
+    if (div) div.style.display = "none"
+    // don't worry about it if it's closed though
+    document.removeEventListener('click', handleCloseSetting);
+}
+
+const toggleSettings = (e) => {
+    e.stopPropagation();
+    // create a popup menu with CLI args and custom dir
+    let settingsPop = document.getElementById('my-run-config');
+    if (!settingsPop) {
+        // in this scenario, it's definitely "closed" so it's ok to open
+        settingsPop = document.createElement("div");
+        settingsPop.id = 'my-run-config';
+        settingsPop.style.position = "absolute";
+        settingsPop.style.backgroundColor = "white";
+        settingsPop.style.border = "1px solid #ccc";
+        settingsPop.style.padding = "10px";
+        settingsPop.style.boxShadow = "0 2px 5px rgba(0, 0, 0, 0.2)";
+        settingsPop.innerHTML = `
+            <label>Command Line Args: <input type="text" id="cmdArgs" /></label><br />
+            <label>Directory: <input type="text" id="directory" /></label><br />
+        `;
+
+        document.body.appendChild(settingsPop);
+    } else {
+        // in this scenario, it might be open so we should close it
+        if (settingsPop.style.display === 'block') {
+            settingsPop.style.display = "none";
+            return
+
+        }
+
+    }
+    // we could probably do this every time, in case the page width changes or somethign
+    let configBox = document.getElementById('my-run-config-button').getBoundingClientRect();
+    settingsPop.style.left = `${configBox.left}px`;
+    settingsPop.style.top = `${configBox.bottom}px`;
+    settingsPop.style.display = "block";
+
+    // add it while the settings box is open
+    document.addEventListener('click', handleCloseSetting);
+
+    settingsPop.addEventListener('click', e => e.stopPropagation());
+
+
+}
+
 
 const addToolTip = (div, tip) => {
     const target = div;
@@ -385,6 +436,7 @@ const addToolTip = (div, tip) => {
     });
 }
 
+
 const checkAddButton = () => {
     // header will be there
     // but .items-center won't always
@@ -442,8 +494,24 @@ const checkAddButton = () => {
     fixButton.id = 'my-run-fix-button';
     runBlock.prepend(fixButton);
 
+    const settingsButton = sampleButton.cloneNode(true);
+    svgPath = settingsButton.querySelector('svg path');
+    if (svgPath) {
+        svgPath.setAttribute(
+            'd',
+            //"M 3 2 L 18 12 L 3 22 V 2 Z M 8 2 L 23 12 L 8 22 Z M 20 9 A 4 4 90 0 1 24 5 A 4 4 90 0 1 20 1 A 4 4 90 0 1 16 5 A 4 4 90 0 1 20 9"
+            //"M8.5 12c0 1.9 1.6 3.5 3.5 3.5s3.5-1.6 3.5-3.5S13.9 8.5 12 8.5 8.5 10.1 8.5 12ZM12 10.5c.8 0 1.5.7 1.5 1.5s-.7 1.5-1.5 1.5-1.5-.7-1.5-1.5.7-1.5 1.5-1.5ZM9 3 8.2 4.4c-.2.3-.5.5-.9.5H5.7c-1 0-2 .5-2.6 1.5l-.4.7c-.5 1-.5 2.1 0 3l.8 1.4c.2.3.2.7 0 1l-.8 1.4c-.5.9-.5 2 0 3l.4.7c.6 1 1.6 1.5 2.6 1.5H7.3c.4 0 .7.2.9.5L9 21c.5.9 1.5 1.5 2.6 1.5h.8c1.1 0 2.1-.6 2.6-1.5l.8-1.4c.2-.3.5-.5.9-.5h1.6c1.1 0 2-.5 2.6-1.5l.4-.7c.5-1 .5-2.1 0-3l-.8-1.4c-.2-.3-.2-.7 0-1l.8-1.4c.5-.9.5-2 0-3l-.4-.7c-.6-1-1.5-1.5-2.6-1.5H16.7c-.4 0-.7-.2-.9-.5L15 3c-.5-.9-1.5-1.5-2.6-1.5h-.8C10.5 1.5 9.5 2.1 9 3Zm2.6.5h.8c.4 0 .7.2.9.5l.8 1.4c.5.9 1.5 1.4 2.6 1.5h1.6c.3 0 .7.2.8.5l.5.7c.1.3.1.7 0 1l-.8 1.4c-.5.9-.5 2.1 0 3l.8 1.4c.1.3.1.7 0 1l-.5.7c-.1.3-.5.5-.8.5H16.7c-1.1.1-2.1.6-2.6 1.5L13.3 20c-.2.3-.5.5-.9.5h-.8c-.4 0-.7-.2-.9-.5l-.8-1.4c-.5-.9-1.5-1.4-2.6-1.5H5.7c-.3 0-.6-.2-.8-.5l-.5-.7c-.1-.3-.1-.7 0-1l.8-1.4c.5-.9.5-2.1 0-3L4.4 9.1c-.1-.3-.1-.7 0-1l.5-.7c.2-.3.5-.5.8-.5H7.3c1.1-.1 2.1-.6 2.6-1.5L10.7 4c.2-.3.5-.5.9-.5Z"
+            "M8.5 12c0-2 1.5-3.5 3.5-3.5S15.5 10 15.5 12 14 15.5 12 15.5 8.5 14 8.5 12ZM9 3 8.2 4.4c-.2.3-.5.5-.9.5H5.7c-1 0-2 .5-2.6 1.5l-.4.7c-.5 1-.5 2.1 0 3l.8 1.4c.2.3.2.7 0 1l-.8 1.4c-.5.9-.5 2 0 3l.4.7c.6 1 1.6 1.5 2.6 1.5H7.3c.4 0 .7.2.9.5L9 21c.5.9 1.5 1.5 2.6 1.5h.8c1.1 0 2.1-.6 2.6-1.5l.8-1.4c.2-.3.5-.5.9-.5h1.6c1.1 0 2-.5 2.6-1.5l.4-.7c.5-1 .5-2.1 0-3l-.8-1.4c-.2-.3-.2-.7 0-1l.8-1.4c.5-.9.5-2 0-3l-.4-.7c-.6-1-1.5-1.5-2.6-1.5H16.7c-.4 0-.7-.2-.9-.5L15 3c-.5-.9-1.5-1.5-2.6-1.5h-.8C10.5 1.5 9.5 2.1 9 3ZL8.2 4.4Z"
+        );
+    }
+
+    settingsButton.addEventListener('click', e => toggleSettings(e));
+    settingsButton.id = 'my-run-config-button';
+    runBlock.prepend(settingsButton);
+
     addToolTip(runButton, 'Run')
     addToolTip(fixButton, 'Fix & Loop')
+    addToolTip(settingsButton, 'Run Config')
 
     header.insertBefore(runBlock, existingBlock);
 }

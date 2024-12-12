@@ -11,7 +11,8 @@
                 "https://chatgpt.com/c/*"
             ],
             "js": [
-                "content.js"
+                "content.js",
+                "ui.js"
             ]
         }
     ]

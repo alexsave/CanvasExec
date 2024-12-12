@@ -225,8 +225,18 @@ const runCode = (code) => {
         // interesting note: this won't work if you ask for python code, then switch to C
         const language = document.querySelector('#codemirror .cm-content').getAttribute('data-language');
 
+
         // we need to send this to backend
         const request = { language, code, uuid };
+
+        const customDir = document.getElementById("custom-dir").value
+        if (customDir) request.customDir = customDir;
+
+        const runArgs = document.getElementById("run-args").value;
+        if (runArgs) request.runArgs = runArgs;
+
+        const compArgs = document.getElementById("comp-args").value;
+        if (compArgs) request.compArgs = compArgs;
 
         let terminalElement = document.querySelector('#my-terminal');
 

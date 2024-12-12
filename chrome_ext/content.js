@@ -343,14 +343,71 @@ const toggleSettings = (e) => {
         settingsPop = document.createElement("div");
         settingsPop.id = 'my-run-config';
         settingsPop.style.position = "absolute";
-        settingsPop.style.backgroundColor = "white";
-        settingsPop.style.border = "1px solid #ccc";
-        settingsPop.style.padding = "10px";
-        settingsPop.style.boxShadow = "0 2px 5px rgba(0, 0, 0, 0.2)";
-        settingsPop.innerHTML = `
-            <label>Command Line Args: <input type="text" id="cmdArgs" /></label><br />
-            <label>Directory: <input type="text" id="directory" /></label><br />
-        `;
+        settingsPop.style.backgroundColor = "#0d0d0d";
+        settingsPop.style.width = '320px';
+        settingsPop.style.border = "1px solid #313131";
+        settingsPop.className = 'relative z-50 select-none shadow-xs transition-opacity px-3 py-2 rounded-lg border-white/10 dark:border bg-gray-950';// max-w-xs';
+
+        /*const args = document.createElement('textarea');
+        args.className = "w-full resize-none border-0 bg-transparent p-0 text-token-text-primary outline-0 placeholder:text-token-text-secondary focus:ring-0 focus-visible:ring-0";
+        args.placeholder = "Compiler args"
+
+        const runArgs = document.createElement('textarea');
+        runArgs.className = "w-full resize-none border-0 bg-transparent p-0 text-token-text-primary outline-0 placeholder:text-token-text-secondary focus:ring-0 focus-visible:ring-0";
+        runArgs.placeholder = "Runtime args"
+
+        const dir = document.createElement('textarea');
+        dir.className = "w-full resize-none border-0 bg-transparent p-0 text-token-text-primary outline-0 placeholder:text-token-text-secondary focus:ring-0 focus-visible:ring-0";
+        dir.placeholder = "Folder to run in (defaults to tmp dir)"*/
+        //style="height: 24px !important;"></textar
+
+        //settingsPop.appendChild(runArgs);
+        //settingsPop.appendChild(args);
+        //settingsPop.appendChild(dir);
+
+        // Function to create a labeled textarea
+        const createLabeledTextarea = (labelText, placeholderText, id) => {
+            const container = document.createElement("div");
+            container.style.display = "flex";
+            container.style.alignItems = "center";
+            container.style.marginBottom = "5px";
+
+            const label = document.createElement("label");
+            label.textContent = labelText;
+            //label.style.marginRight = "10px";
+            label.style.color = "#bbbbbb";
+            label.style.width = "120px";
+            label.style.textAlign = "right";
+            label.style.fontSize = "12px";
+            container.appendChild(label);
+
+            const textarea = document.createElement("textarea");
+            textarea.id = id;
+            textarea.className = "resize-none bg-gray-900 p-2 rounded focus:ring "
+            container.appendChild(label);
+            textarea.placeholder = placeholderText;
+            textarea.style.whiteSpace = "nowrap";
+            label.style.fontSize = "12px";
+            textarea.style.lineHeight = "25px";
+            textarea.style.height = "25px";
+            textarea.style.padding = "0";
+            textarea.style.width = "200px";
+            textarea.style.overflowY = "scroll";
+            textarea.style.scrollbarWidth = "none"; // Firefox
+            textarea.style.msOverflowStyle = "none"; // IE 10+
+            textarea.style.webkitScrollbar = "none"; // WebKit browsers
+
+            container.appendChild(textarea);
+
+            settingsPop.appendChild(container);
+            return textarea;
+        };
+
+        // Add labeled textareas
+        createLabeledTextarea("Compiler Args:", "Enter compiler args", "comp-args");
+        createLabeledTextarea("Runtime Args:", "Enter runtime args", "run-args");
+        createLabeledTextarea("Working Directory:", "Defaults to tmp dir", "custom-dir");
+
 
         document.body.appendChild(settingsPop);
     } else {

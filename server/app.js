@@ -72,6 +72,7 @@ server.on('connection', (socket, req) => {
             }
 
         } catch (error) {
+            // here
             socket.send(`Error: ${error.message}`);
         }
     });
@@ -91,14 +92,16 @@ const executeCode = async (socket, code, language, customDir, compArgs, runArgs)
             tempDir = fs.mkdtempSync(path.join(__dirname, 'temp-'));
         }
 
-        const fileName = path.join(tempDir, languageHandlers[language][fileName]);
+        const fileName = path.join(tempDir, languageHandlers[language]['fileName']);
         if (!fileName) {
             socket.send(`Error: Unsupported language ${language}`);
             if (!customDir) cleanUp(tempDir);
             return;
         }
 
+        //console.log('about to write ' + code + 'to ' + fileName);
         fs.writeFileSync(fileName, code);
+        //console.log('wrote file')
 
         // Delegate execution to the respective language handler
         const handler = getLanguageHandler(language);
@@ -110,11 +113,13 @@ const executeCode = async (socket, code, language, customDir, compArgs, runArgs)
 
         try {
             //compile, etc. Don't want this to affect timing
-            await handler.preExecute(socket, fileName, tempDir, compArgs);
+            const compArgArray = compArgs?compArgs.split(' '):[]
+            await handler.preExecute(socket, fileName, tempDir, compArgArray);
 
             try {
                 const startTime = process.hrtime(); // Start timer
-                await handler.execute(socket, fileName, tempDir, runArgs);
+                const runArgArray = runArgs?runArgs.split(' '):[]
+                await handler.execute(socket, fileName, tempDir, runArgArray);
                 const elapsedTime = process.hrtime(startTime); // End timer
 
                 // Calculate elapsed time in milliseconds
@@ -129,6 +134,7 @@ const executeCode = async (socket, code, language, customDir, compArgs, runArgs)
         }
 
     } catch (error) {
+        console.log(error)
         socket.send(`eError: ${error.message}`);
     } finally {
         if (!customDir) cleanUp(tempDir);
@@ -213,7 +219,7 @@ const languageHandlers = {
         preExecute: _ => { },
         execute: async (socket, fileName, tempDir, runArgs) => {
             //await ensureToolInstalled('bash', socket);
-            await runCommand(socket, 'bash', [fileName, ...runArgs.split(' ')], tempDir);
+            await runCommand(socket, 'bash', [fileName, ...runArgs], tempDir);
         }
     },
     python: {
@@ -223,7 +229,7 @@ const languageHandlers = {
         preExecute: _ => { },
         execute: async (socket, fileName, tempDir, runArgs) => {
             //await ensureToolInstalled('python', socket);
-            await runCommand(socket, platform === 'win32' ? 'python' : 'python3', [fileName, ...runArgs.split(' ')], tempDir);
+            await runCommand(socket, platform === 'win32' ? 'python' : 'python3', [fileName, ...runArgs], tempDir);
         }
     },
     javascript: {
@@ -233,7 +239,7 @@ const languageHandlers = {
         preExecute: _ => { },
         execute: async (socket, fileName, tempDir, runArgs) => {
             //await ensureToolInstalled('javascript', socket);
-            await runCommand(socket, 'node', [fileName, ...runArgs.split(' ')], tempDir);
+            await runCommand(socket, 'node', [fileName, ...runArgs], tempDir);
         }
     },
     java: {
@@ -244,11 +250,11 @@ const languageHandlers = {
             // Compile step
             //await ensureToolInstalled('java', socket);
             // not sure about order on these
-            await runCommand(socket, 'javac', [fileName, ...compArgs.split(' ')], tempDir);
+            await runCommand(socket, 'javac', [fileName, ...compArgs], tempDir);
         },
         execute: async (socket, fileName, tempDir, runArgs) => {
             // Run compiled Java program
-            await runCommand(socket, 'java', ['-cp', tempDir, 'Main', ...runArgs.split(' ')], tempDir);
+            await runCommand(socket, 'java', ['-cp', tempDir, 'Main', ...runArgs], tempDir);
         }
     },
     c: {
@@ -259,12 +265,12 @@ const languageHandlers = {
             // Compile step
             //await ensureToolInstalled('c', socket);
             const compiledFile = path.join(tempDir, 'program');
-            await runCommand(socket, 'gcc', [fileName, '-o', compiledFile, ...compArgs.split(' ')], tempDir);
+            await runCommand(socket, 'gcc', [fileName, '-o', compiledFile, ...compArgs], tempDir);
         },
         execute: async (socket, fileName, tempDir, runArgs) => {
             // Run compiled program
             // timing should go here
-            await runCommand(socket, path.join(tempDir, 'program'), [...runArgs.split(' ')], tempDir);
+            await runCommand(socket, path.join(tempDir, 'program'), runArgs, tempDir);
         }
     },
     cpp: {
@@ -276,12 +282,12 @@ const languageHandlers = {
 
             // Compile step
             const compiledFile = path.join(tempDir, 'program');
-            await runCommand(socket, 'g++', [fileName, '-o', compiledFile, ...compArgs.split(' ')], tempDir);
+            await runCommand(socket, 'g++', [fileName, '-o', compiledFile, ...compArgs], tempDir);
         },
         execute: async (socket, fileName, tempDir, runArgs) => {
 
             // Run compiled program
-            await runCommand(socket, path.join(tempDir, 'program'), [...runArgs.split(' ')], tempDir);
+            await runCommand(socket, path.join(tempDir, 'program'), runArgs, tempDir);
         }
     }
 };

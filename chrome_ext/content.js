@@ -118,8 +118,12 @@ function waitForNetworkIdleAndDOMStable(timeout = 1000, checkInterval = 500) {
 
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
-const appendOutput = (terminal, text, color = '#fff') => {
+const appendOutput = (terminal, text, color = '#fff', id = '') => {
+    if (id !== 'confirm-prompt'){
+        document.getElementById('confirm-prompt')?.remove();
+    }
     const chunk = document.createElement('code');
+    chunk.id = id;
     chunk.style.color = color;
     //chunk.textContent = text.replace(/\n/g, '<br>');
     chunk.textContent = text;//.replace(/\n/g, '<br>');
@@ -127,15 +131,7 @@ const appendOutput = (terminal, text, color = '#fff') => {
     terminal.appendChild(chunk);
 }
 
-/*const appendError = (terminal, text) => {
-    const line = document.createElement('code');
-    line.style.color = '#f22c3d'
-    line.textContent = text;
-    terminal.appendChild(line);
-}*/
-
 let errCache = '';
-
 
 const runFixCode = async () => {
     errCache = '';
@@ -147,7 +143,7 @@ const runFixCode = async () => {
         return;
 
     // This is surprisingly critical
-    errCache = 'Fix this:\n' + errCache;
+    errCache = 'Fix this in canvas:\n' + errCache;
 
     // note that this completely doesn't work in the case where the canvas has no chat on teh left
     const promptBox = document.querySelector('#prompt-textarea');
@@ -199,13 +195,15 @@ const getCode = async () => {
     // the best solution seems to be literally emulate the current workflow of copying to another ide
     // so hit the copy button
     // Perform actions: Click the button
-    const button = document.querySelector('header :nth-child(3) > span button');
+    // ffs they updated the DOM
+    const selector = 'header div:nth-of-type(3) >div> span button'
+    const button = document.querySelector(selector);
     if (!button) {
         console.log('no  button')
         // Restore if the button is not found
-        navigator.clipboard.write = originalWrite;
-        reject(new Error(`Button not found for selector: ${selector}`));
-        return;
+        //navigator.clipboard.write = originalWrite;
+        //reject(
+        throw new Error(`Button not found for selector: ${selector}`);
     }
     button.click();
 
@@ -229,13 +227,13 @@ const runCode = (code) => {
         // we need to send this to backend
         const request = { language, code, uuid };
 
-        const customDir = document.getElementById("custom-dir").value
+        const customDir = document.getElementById("custom-dir")?.value
         if (customDir) request.customDir = customDir;
 
-        const runArgs = document.getElementById("run-args").value;
+        const runArgs = document.getElementById("run-args")?.value;
         if (runArgs) request.runArgs = runArgs;
 
-        const compArgs = document.getElementById("comp-args").value;
+        const compArgs = document.getElementById("comp-args")?.value;
         if (compArgs) request.compArgs = compArgs;
 
         let terminalElement = document.querySelector('#my-terminal');
@@ -284,11 +282,11 @@ const runCode = (code) => {
 
         setTimeout(() => {
             // If nothing has been returned after 5s, it's likely that they need to confirm uuid
-            // 2 because timing
+            // 2 because timing element is always there
             if (terminalElement.children.length < 2) {
-                appendOutput(terminalElement, "Check server process to confirm request.")
+                appendOutput(terminalElement, "Check server process to confirm request.", '#fff', 'confirm-prompt')
             }
-        }, 5000)
+        }, 2000)
 
         // 30s limit
         setTimeout(() => {
@@ -302,6 +300,8 @@ const runCode = (code) => {
         // send code to server
         socket.addEventListener('open', (event) => {
             console.log('WebSocket connection opened:', event);
+            console.log(request);
+            console.log(JSON.stringify(request));
             socket.send(JSON.stringify(request));
         });
 
@@ -325,8 +325,7 @@ const runCode = (code) => {
         socket.addEventListener('error', (event) => {
             console.log('WebSocket error:', event);
             // probably server not running
-            appendOutput(terminalElement, event, '#f22c3d')
-            appendOutput(terminalElement, "\nConnection failed, ensure server is running: node server/app.js", "#f22c3d")
+            appendOutput(terminalElement, "Connection failed, ensure server is running: node server/app.js", "#f22c3d")
         });
 
         // WebSocket connection closed event
@@ -357,23 +356,6 @@ const toggleSettings = (e) => {
         settingsPop.style.width = '320px';
         settingsPop.style.border = "1px solid #313131";
         settingsPop.className = 'relative z-50 select-none shadow-xs transition-opacity px-3 py-2 rounded-lg border-white/10 dark:border bg-gray-950';// max-w-xs';
-
-        /*const args = document.createElement('textarea');
-        args.className = "w-full resize-none border-0 bg-transparent p-0 text-token-text-primary outline-0 placeholder:text-token-text-secondary focus:ring-0 focus-visible:ring-0";
-        args.placeholder = "Compiler args"
-
-        const runArgs = document.createElement('textarea');
-        runArgs.className = "w-full resize-none border-0 bg-transparent p-0 text-token-text-primary outline-0 placeholder:text-token-text-secondary focus:ring-0 focus-visible:ring-0";
-        runArgs.placeholder = "Runtime args"
-
-        const dir = document.createElement('textarea');
-        dir.className = "w-full resize-none border-0 bg-transparent p-0 text-token-text-primary outline-0 placeholder:text-token-text-secondary focus:ring-0 focus-visible:ring-0";
-        dir.placeholder = "Folder to run in (defaults to tmp dir)"*/
-        //style="height: 24px !important;"></textar
-
-        //settingsPop.appendChild(runArgs);
-        //settingsPop.appendChild(args);
-        //settingsPop.appendChild(dir);
 
         // Function to create a labeled textarea
         const createLabeledTextarea = (labelText, placeholderText, id) => {
@@ -566,8 +548,6 @@ const checkAddButton = () => {
     if (svgPath) {
         svgPath.setAttribute(
             'd',
-            //"M 3 2 L 18 12 L 3 22 V 2 Z M 8 2 L 23 12 L 8 22 Z M 20 9 A 4 4 90 0 1 24 5 A 4 4 90 0 1 20 1 A 4 4 90 0 1 16 5 A 4 4 90 0 1 20 9"
-            //"M8.5 12c0 1.9 1.6 3.5 3.5 3.5s3.5-1.6 3.5-3.5S13.9 8.5 12 8.5 8.5 10.1 8.5 12ZM12 10.5c.8 0 1.5.7 1.5 1.5s-.7 1.5-1.5 1.5-1.5-.7-1.5-1.5.7-1.5 1.5-1.5ZM9 3 8.2 4.4c-.2.3-.5.5-.9.5H5.7c-1 0-2 .5-2.6 1.5l-.4.7c-.5 1-.5 2.1 0 3l.8 1.4c.2.3.2.7 0 1l-.8 1.4c-.5.9-.5 2 0 3l.4.7c.6 1 1.6 1.5 2.6 1.5H7.3c.4 0 .7.2.9.5L9 21c.5.9 1.5 1.5 2.6 1.5h.8c1.1 0 2.1-.6 2.6-1.5l.8-1.4c.2-.3.5-.5.9-.5h1.6c1.1 0 2-.5 2.6-1.5l.4-.7c.5-1 .5-2.1 0-3l-.8-1.4c-.2-.3-.2-.7 0-1l.8-1.4c.5-.9.5-2 0-3l-.4-.7c-.6-1-1.5-1.5-2.6-1.5H16.7c-.4 0-.7-.2-.9-.5L15 3c-.5-.9-1.5-1.5-2.6-1.5h-.8C10.5 1.5 9.5 2.1 9 3Zm2.6.5h.8c.4 0 .7.2.9.5l.8 1.4c.5.9 1.5 1.4 2.6 1.5h1.6c.3 0 .7.2.8.5l.5.7c.1.3.1.7 0 1l-.8 1.4c-.5.9-.5 2.1 0 3l.8 1.4c.1.3.1.7 0 1l-.5.7c-.1.3-.5.5-.8.5H16.7c-1.1.1-2.1.6-2.6 1.5L13.3 20c-.2.3-.5.5-.9.5h-.8c-.4 0-.7-.2-.9-.5l-.8-1.4c-.5-.9-1.5-1.4-2.6-1.5H5.7c-.3 0-.6-.2-.8-.5l-.5-.7c-.1-.3-.1-.7 0-1l.8-1.4c.5-.9.5-2.1 0-3L4.4 9.1c-.1-.3-.1-.7 0-1l.5-.7c.2-.3.5-.5.8-.5H7.3c1.1-.1 2.1-.6 2.6-1.5L10.7 4c.2-.3.5-.5.9-.5Z"
             "M8.5 12c0-2 1.5-3.5 3.5-3.5S15.5 10 15.5 12 14 15.5 12 15.5 8.5 14 8.5 12ZM9 3 8.2 4.4c-.2.3-.5.5-.9.5H5.7c-1 0-2 .5-2.6 1.5l-.4.7c-.5 1-.5 2.1 0 3l.8 1.4c.2.3.2.7 0 1l-.8 1.4c-.5.9-.5 2 0 3l.4.7c.6 1 1.6 1.5 2.6 1.5H7.3c.4 0 .7.2.9.5L9 21c.5.9 1.5 1.5 2.6 1.5h.8c1.1 0 2.1-.6 2.6-1.5l.8-1.4c.2-.3.5-.5.9-.5h1.6c1.1 0 2-.5 2.6-1.5l.4-.7c.5-1 .5-2.1 0-3l-.8-1.4c-.2-.3-.2-.7 0-1l.8-1.4c.5-.9.5-2 0-3l-.4-.7c-.6-1-1.5-1.5-2.6-1.5H16.7c-.4 0-.7-.2-.9-.5L15 3c-.5-.9-1.5-1.5-2.6-1.5h-.8C10.5 1.5 9.5 2.1 9 3ZL8.2 4.4Z"
         );
     }

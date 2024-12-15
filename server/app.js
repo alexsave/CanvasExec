@@ -31,6 +31,14 @@ const savedUUIDs = new Set();
 // WebSocket server
 const server = new WebSocket.Server({ port: 4001, host: '127.0.0.1' });
 
+// Function to resolve '~' to the home directory
+const resolvePath = (filepath) => {
+    if (filepath.startsWith('~')) {
+        return path.join(os.homedir(), filepath.slice(1));
+    }
+    return filepath;
+}
+
 server.on('connection', (socket, req) => {
     console.log(`Client connected from: ${req.socket.remoteAddress}`);
 
@@ -81,8 +89,10 @@ server.on('connection', (socket, req) => {
 const executeCode = async (socket, code, language, customDir, compArgs, runArgs) => {
     console.log('executing');
     let tempDir;
+    let fileName;
     try {
         if (customDir) {
+            customDir = resolvePath(customDir);
             if (!fs.existsSync(customDir)) {
                 socket.send(`Error: Custom folder ${customDir} does not exist`);
                 return;
@@ -92,10 +102,11 @@ const executeCode = async (socket, code, language, customDir, compArgs, runArgs)
             tempDir = fs.mkdtempSync(path.join(__dirname, 'temp-'));
         }
 
-        const fileName = path.join(tempDir, languageHandlers[language]['fileName']);
+        fileName = path.join(tempDir, languageHandlers[language]['fileName']);
         if (!fileName) {
             socket.send(`Error: Unsupported language ${language}`);
             if (!customDir) cleanUp(tempDir);
+            cleanUp(fileName);
             return;
         }
 
@@ -108,17 +119,18 @@ const executeCode = async (socket, code, language, customDir, compArgs, runArgs)
         if (!handler) {
             socket.send(`Error: No handler found for language ${language}`);
             if (!customDir) cleanUp(tempDir);
+            cleanUp(fileName);
             return;
         }
 
         try {
             //compile, etc. Don't want this to affect timing
-            const compArgArray = compArgs?compArgs.split(' '):[]
+            const compArgArray = compArgs ? compArgs.split(' ') : []
             await handler.preExecute(socket, fileName, tempDir, compArgArray);
 
             try {
                 const startTime = process.hrtime(); // Start timer
-                const runArgArray = runArgs?runArgs.split(' '):[]
+                const runArgArray = runArgs ? runArgs.split(' ') : []
                 await handler.execute(socket, fileName, tempDir, runArgArray);
                 const elapsedTime = process.hrtime(startTime); // End timer
 
@@ -138,6 +150,7 @@ const executeCode = async (socket, code, language, customDir, compArgs, runArgs)
         socket.send(`eError: ${error.message}`);
     } finally {
         if (!customDir) cleanUp(tempDir);
+        cleanUp(fileName);
         socket.close();
     }
 };
@@ -171,7 +184,9 @@ const ensureToolInstalled = async (language, socket) => {
 
 const runCommand = (socket, cmd, args, tempDir) => {
     return new Promise((resolve, reject) => {
-        const process = spawn(cmd, args);
+        const process = spawn(cmd, args, {
+            cwd: tempDir
+        });
 
         process.stdout.on('data', (data) => {
             console.log('stdout data ' + data.toString());
@@ -297,7 +312,9 @@ const languageHandlers = {
 const getLanguageHandler = (language) => languageHandlers[language];
 
 const cleanUp = (dir) => {
-    fs.rmSync(dir, { recursive: true, force: true });
+    return;
+    if (dir)
+        fs.rmSync(dir, { recursive: true, force: true });
 };
 
 // Start the server

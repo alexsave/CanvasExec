@@ -11,6 +11,7 @@
                 "https://chatgpt.com/c/*"
             ],
             "js": [
+                "constants.js",
                 "content.js",
                 "ui.js"
             ]

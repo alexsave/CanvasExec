@@ -47,14 +47,14 @@ server.on('connection', (socket, req) => {
                 return;
             }
 
-            const { code, language, customDir } = parsedMessage;
+            const { code, language, customDir, compArgs, runArgs } = parsedMessage;
             if (!code || !language) {
                 socket.send('Error: Missing code or language');
                 return;
             }
 
             if (savedUUIDs.has(uuid)) {
-                executeCode(socket, code, language, customDir);
+                executeCode(socket, code, language, customDir, compArgs, runArgs);
             } else {
                 console.log(`Received UUID from client: ${uuid}`);
 
@@ -62,7 +62,7 @@ server.on('connection', (socket, req) => {
                 rl.question(`Do you confirm the execution for UUID: ${uuid}? (yes/no): `, (answer) => {
                     if (answer.toLowerCase() === 'yes') {
                         savedUUIDs.add(uuid);
-                        executeCode(socket, code, language, customDir);
+                        executeCode(socket, code, language, customDir, compArgs, runArgs);
                     } else {
                         socket.send('Execution not confirmed by the user.');
                         socket.close();

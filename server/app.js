@@ -312,7 +312,6 @@ const languageHandlers = {
 const getLanguageHandler = (language) => languageHandlers[language];
 
 const cleanUp = (dir) => {
-    return;
     if (dir)
         fs.rmSync(dir, { recursive: true, force: true });
 };

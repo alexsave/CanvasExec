@@ -121,13 +121,18 @@ const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 let errCache = '';
 
 const runFixCode = async () => {
+    document.getElementById('my-run-block').style.display = 'none';
     errCache = '';
     console.log(errCache);
 
     await fetchAndRunCode();
 
-    if (errCache === '')
+    if (errCache === ''){
+        document.getElementById('my-run-block').style.display = 'block';
+
+
         return;
+    }
 
     // This is surprisingly critical
     errCache = 'Fix this in canvas:\n' + errCache;
@@ -174,7 +179,9 @@ const fetchAndRunCode = async _ => {
     console.log('getting code');
     const code = await getCode();
     console.log('got code ' + code)
+    // dsiable
     await runCode(code);
+    // enabled
     console.log('ran code');
 };
 
@@ -236,11 +243,10 @@ const runCode = (code) => {
             resolve();
         }
 
-
         setTimeout(() => {
             // If nothing has been returned after 5s, it's likely that they need to confirm uuid
             // 4 because timing element is always there, and so is teh container and also x button
-            if (terminalElement.children.length <= 3) {
+            if (terminalElement.firstChild.children.length === 0) {
                 appendOutput(terminalElement, `Check server process to authorize client id: ${uuid}`, '#fff', 'confirm-prompt')
             }
         }, 2000)

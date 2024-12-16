@@ -216,6 +216,12 @@ const addHoverTip = (div, tip) => {
     });
 };
 
+const withHideRunBlock = task => async () => {
+    document.getElementById('my-run-block').style.display = 'none';
+    await task();
+    document.getElementById('my-run-block').style.display = 'block';
+}
+
 const createRunBlock = (existingBlock) => {
     const sampleButton = existingBlock.querySelector('button')
     // I just want styles, let's see what this does
@@ -233,7 +239,7 @@ const createRunBlock = (existingBlock) => {
             'M3 2L21 12L3 22V2Z' // A basic right-pointing play button shape
         );
     }
-    runButton.addEventListener('click', fetchAndRunCode);
+    runButton.addEventListener('click', withHideRunBlock(fetchAndRunCode));
     runButton.id = 'my-run-button';
     runBlock.prepend(runButton);
 

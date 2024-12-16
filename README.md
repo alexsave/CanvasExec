@@ -19,7 +19,6 @@ To support running various languages, run these as needed
 
 Todo ext:
 - fix hover css
-- hide buttons during code change
 - save config to localstorage or wtvr
 - remove info timeouts if necessary
 Todo server:

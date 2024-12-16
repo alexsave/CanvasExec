@@ -16,3 +16,13 @@ To support running various languages, run these as needed
 - `brew install python`
 - `brew install gcc`
 - `brew install npm`
+
+Todo:
+- allow for input from terminal.
+- add exit terminal button
+- fix hover css
+- hide buttons during code change
+- save config to localstorage or wtvr
+- remove output file from custom dir
+- split into files
+- remove info timeouts if necessary

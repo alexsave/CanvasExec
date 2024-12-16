@@ -35,12 +35,30 @@ const getTerminalAndTiming = () => {
         textContainer.style.overflowY = 'auto';
 
         terminalElement.appendChild(textContainer);
+        /*
+        <code id="my-timing" style="position: absolute; top: 0px; right: 0px; padding:.5rem;font-family: inherit; font-size: 24px;">X
+</code>
+        */
 
+        let closeButton = document.createElement('button');
+        closeButton.style.position = 'absolute';
+        closeButton.style.top = '0';
+        closeButton.style.right = '0';
+        closeButton.style.padding = '0.5rem';
+        closeButton.style.fontSize = '24px'
+        closeButton.textContent = 'X';
+        closeButton.addEventListener('click', () => {
+            terminalElement.style.display = 'none';
+        });
+
+
+        terminalElement.appendChild(closeButton);
 
         // Append the new child to the parent
         document.querySelector('section').appendChild(terminalElement);
     }
 
+    terminalElement.style.display = 'block';
     terminalElement.firstChild.innerHTML = "";
     //terminalElement.removeChild(terminalElement.lastChild);
 

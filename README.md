@@ -17,12 +17,12 @@ To support running various languages, run these as needed
 - `brew install gcc`
 - `brew install npm`
 
-Todo:
-- allow for input from terminal.
-- add exit terminal button
+Todo ext:
 - fix hover css
 - hide buttons during code change
 - save config to localstorage or wtvr
+- remove info timeouts if necessary
+Todo server:
+- allow for input from terminal.
 - remove output file from custom dir
 - split into files
-- remove info timeouts if necessary

@@ -239,8 +239,8 @@ const runCode = (code) => {
 
         setTimeout(() => {
             // If nothing has been returned after 5s, it's likely that they need to confirm uuid
-            // 3 because timing element is always there, and so is teh container
-            if (terminalElement.children.length < 3) {
+            // 4 because timing element is always there, and so is teh container and also x button
+            if (terminalElement.children.length <= 3) {
                 appendOutput(terminalElement, `Check server process to authorize client id: ${uuid}`, '#fff', 'confirm-prompt')
             }
         }, 2000)
@@ -304,7 +304,6 @@ const checkAddButton = () => {
     // header will be there
     // but .items-center won't always
     if (document.getElementById('my-run-block')) {
-        console.log('element found, stoping check')
         clearInterval(checkAddButton);
         return;
     }
@@ -312,26 +311,19 @@ const checkAddButton = () => {
     const header = document.querySelector('header');
 
     // Canvas not opened
-    if (!header) {
-        console.log('no header tag')
+    if (!header) 
         return;
-    }
 
     let existingBlock = document.querySelector('header').lastChild;
     // Still Canvas not opened
-    if (!existingBlock) {
-        console.log('no last child of header')
+    if (!existingBlock) 
         return;
-    }
 
     const sampleButton = existingBlock.querySelector('button')
 
     // Also canvas not opened
-    if (!sampleButton) {
-        console.log('no sample button')
-
+    if (!sampleButton) 
         return;
-    }
 
     let runBlock = createRunBlock(existingBlock);
     console.log('adding ' + runBlock + ' before ' + existingBlock);
